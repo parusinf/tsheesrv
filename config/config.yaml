@@ -26,7 +26,7 @@ webhook:
   cert_path: cert/api-parusinf-ru.crt
 
 sqlite:
-  database: tsheesrv.db
+  database: /var/lib/sqlite/tsheesrv.db
   echo: False
 
 oracle:
