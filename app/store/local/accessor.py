@@ -34,7 +34,7 @@ class SqliteAccessor:
 
     async def _on_connect(self, app: web.Application):
         self.engine = create_async_engine(
-            f"sqlite+aiosqlite:///{app['config']['sqlite']['database']}",
+            f"sqlite+aiosqlite:///{app['config']['sqlite']['database']}?cache=shared",
             echo=app['config']['sqlite']['echo'],
         )
         async with self.engine.begin() as conn:
@@ -42,8 +42,6 @@ class SqliteAccessor:
         self.session = sessionmaker(
             self.engine, expire_on_commit=False, class_=AsyncSession
         )
-        async with self.session() as session:
-            await session.execute("ATTACH 'file:aux.db?cache=shared' AS aux;")
 
     async def _on_disconnect(self, _):
         await self.engine.dispose()
