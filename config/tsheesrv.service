@@ -1,0 +1,10 @@
+[Unit]
+Description=Timesheets web-service
+After=network-online.target
+Requires=network-online.target
+
+[Service]
+ExecStart=/srv/tsheesrv/venv/bin/python /srv/tsheesrv/main.py
+
+[Install]
+WantedBy=multi-user.target
