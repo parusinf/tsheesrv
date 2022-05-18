@@ -37,5 +37,5 @@ developer:
 use_log_file: False
 log_file: /opt/var/log/tsheebot.log
 
-use_pid_file: True
+use_pid_file: False
 pid_file: /tmp/tsheebot.pid
