@@ -21,19 +21,21 @@ webapp:
   host: 0.0.0.0
   port: 5001
 
-webhook:
-  url: https://api.parusinf.ru
-  cert_path: cert/api-parusinf-ru.crt
-
 sqlite:
   database: /var/lib/sqlite/tsheesrv.db
   echo: False
 
 oracle:
   nls_lang: RUSSIAN_RUSSIA.CL8MSWIN1251
-  min_pool: 1  # минимальное число соединений в пуле на одну базу
-  max_pool: 4  # максимальное число соединений в пуле на одну базу
+  min_pool: 0  # минимальное число соединений в пуле на каждую базу данных
+  max_pool: 4  # максимальное число соединений в пуле на каждую базу данных
 
 developer:
   name: Павел Никитин
   telegram: '@nikitinpa'
+
+use_log_file: False
+log_file: /opt/var/log/tsheebot.log
+
+use_pid_file: True
+pid_file: /tmp/tsheebot.pid

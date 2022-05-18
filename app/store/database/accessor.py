@@ -14,6 +14,7 @@ class OracleAccessor:
         app.on_cleanup.append(self.on_disconnect)
 
     async def on_connect(self, app: web.Application):
+        logging.info(f'Подключение пула баз данных')
         config = app['config']
         os.environ['NLS_LANG'] = config['oracle']['nls_lang']
         for db_key, db_param in config['database'].items():
@@ -31,5 +32,6 @@ class OracleAccessor:
                 logging.error(error)
 
     async def on_disconnect(self, _):
+        logging.info(f'Отключение пула баз данных')
         for pool in self.pool.values():
             await pool.close()

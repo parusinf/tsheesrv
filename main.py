@@ -1,5 +1,12 @@
+import logging
+
 from aiohttp import web
 from app.settings import config
+
+
+logging.basicConfig(
+    filename=config['log_file'] if config['use_log_file'] else None,
+    level=logging.INFO)
 
 
 def setup_config(application):
@@ -9,7 +16,7 @@ def setup_config(application):
 def setup_accessors(application):
     from app.store.database.models import db
     db.setup(application)
-    from app.store.local.models import db as localdb
+    from app.store.cache.models import db as localdb
     localdb.setup(application)
 
 
