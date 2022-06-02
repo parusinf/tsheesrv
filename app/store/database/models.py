@@ -4,7 +4,6 @@ import logging
 from typing import Optional
 from app.store.database.accessor import OracleAccessor
 from tools.cp1251 import encode_cp1251
-from tools.helpers import temp_filepath
 import json
 
 db = OracleAccessor()
