@@ -31,7 +31,7 @@ oracle:
   max_pool: 4  # максимальное число соединений в пуле на каждую базу данных
 
 developer:
-  name: Павел Никитин
+  name: Павел Александрович Никитин
   telegram: '@nikitinpa'
 
 use_log_file: False
