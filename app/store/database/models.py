@@ -2,6 +2,7 @@ from datetime import datetime
 import cx_Oracle
 import logging
 from typing import Optional
+from requests import JSONDecodeError
 from app.store.database.accessor import OracleAccessor
 from tools.cp1251 import encode_cp1251
 import json
@@ -27,6 +28,8 @@ async def get_orgs(db_key, org_inn) -> list[dict]:
                     return orgs
     except cx_Oracle.Error as error:
         logging.error(error)
+    except JSONDecodeError:
+        logging.error(f'Ошибка разбора JSON: {orgs_json}')
     return []
 
 
