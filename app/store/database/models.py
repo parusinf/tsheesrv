@@ -1,7 +1,7 @@
 from datetime import datetime
 import cx_Oracle
 import logging
-from typing import Optional, Any
+from typing import Optional
 from requests import JSONDecodeError
 from app.store.database.accessor import OracleAccessor
 from tools.cp1251 import encode_cp1251
@@ -104,6 +104,8 @@ async def receive_timesheet(db_key, org_rn, group, period=datetime.now()) -> tup
 async def receive(org_inn, group, period=datetime.now()) -> tuple[bytes, str]:
     """Получение табеля посещаемости по ИНН организации и мнемокоду группы"""
     org = await find_org(org_inn, group)
+    if org is None:
+        raise f'В учреждении с ИНН {org_inn} группа с мнемокодом {group} не найдена'
     async with db.pool[org['db_key']].acquire() as connection:
         async with connection.cursor() as cursor:
             filename_var = await cursor.var(str)
