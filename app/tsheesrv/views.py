@@ -54,6 +54,14 @@ async def receive_timesheet(request: web.Request):
         return web.Response(body=root)
 
 
+async def receive(request: web.Request):
+    content, filename = await database.receive(**request.rel_url.query)
+    with aiohttp.MultipartWriter() as root:
+        part = root.append(io.BytesIO(content))
+        part.set_content_disposition('package', filename=filename)
+        return web.Response(body=root)
+
+
 async def _extract_content(request: web.Request):
     post = await request.post()
     package = post.get('package')

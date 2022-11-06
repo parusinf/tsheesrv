@@ -9,3 +9,4 @@ def setup_routes(app):
     app.router.add_get(f'/{token}/get_person', views.get_person)
     app.router.add_get(f'/{token}/get_groups', views.get_groups)
     app.router.add_get(f'/{token}/receive_timesheet', views.receive_timesheet)
+    app.router.add_get(f'/{token}/receive', views.receive)
