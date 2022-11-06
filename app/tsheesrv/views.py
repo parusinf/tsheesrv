@@ -55,11 +55,14 @@ async def receive_timesheet(request: web.Request):
 
 
 async def receive(request: web.Request):
-    content, filename = await database.receive(**request.rel_url.query)
-    with aiohttp.MultipartWriter() as root:
-        part = root.append(io.BytesIO(content))
-        part.set_content_disposition('package', filename=filename)
-        return web.Response(body=root)
+    try:
+        content, filename = await database.receive(**request.rel_url.query)
+        with aiohttp.MultipartWriter() as root:
+            part = root.append(io.BytesIO(content))
+            part.set_content_disposition('package', filename=filename)
+            return web.Response(body=root)
+    except LookupError as e:
+        return web.Response(status=412, text=str(e), charset='utf-8')
 
 
 async def _extract_content(request: web.Request):
