@@ -17,7 +17,7 @@ async def get_orgs(org_inn) -> list[dict]:
 
 async def get_org(org_code, org_inn) -> Optional[dict]:
     async with db.session() as session:
-        stmt = select(Org).where(org_inn == Org.org_inn).where(org_code == Org.org_code)
+        stmt = select(Org).where(org_inn == Org.org_inn, org_code == Org.org_code)
         result = await session.execute(stmt)
         return row_to_dict(result.first())
 
