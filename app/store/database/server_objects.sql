@@ -709,7 +709,7 @@ end;
 /
 show errors;
 
-create or replace procedure UDO_P_RECEIVE_TIMESHEET
+create or replace procedure UDO_P_TIMESHEET_RECEIVE
 -- Получение табеля посещаемости из CSV файла
 (
   nCOMPANY        in number,            -- Организация
@@ -753,6 +753,8 @@ as
   token           varchar2(4000);
   sobch           varchar2(4000);
   sERROR          PKG_STD.tSTRING;
+  nDAYSTYPE_B     PKG_STD.tREF;
+  sDAYSTYPE_CODE  PKG_STD.tSTRING;
 
   -- Обработка строки файла
   procedure PERFORM_LINE
@@ -762,17 +764,19 @@ as
   )
   as
     sLINE         PKG_STD.tSTRING := sSOURCE_LINE;
+    sDAY_VALUE    PKG_STD.tSTRING;
+    nDAYSTYPE     PKG_STD.tREF;
   begin
     -- Удаление лишних ";" в конце строки
     while substr(sLINE, -1) = ';' loop
-      sLINE := substr(sLINE, 1, length(sLINE) - 1);
+      sLINE          := substr(sLINE, 1, length(sLINE) - 1);
     end loop;
     sLINE := sLINE||';';
 
     -- Текущий период
     if nLINE_NUMBER = 1 then
-      sPERION := UDO_F_GET_LIST_ITEM(sLINE, 1, ';');
-      dPERIOD := UDO_F_S2D(sPERION);
+      sPERION        := UDO_F_GET_LIST_ITEM(sLINE, 1, ';');
+      dPERIOD        := UDO_F_S2D(sPERION);
       dPERIOD_BEGIN  := trunc(dPERIOD, 'month');
       nDAYS_IN_MONTH := extract(day from last_day(dPERIOD));
       nMONTH         := extract(month from dPERIOD);
@@ -791,7 +795,7 @@ as
            and O.CODE = sORG_CODE;
       exception
         when NO_DATA_FOUND then
-          P_EXCEPTION(0, 'Организация "%s" не найдена.', sORG_CODE);
+          P_EXCEPTION(0, 'Организация "%s" не найдена', sORG_CODE);
       end;
 
     -- Группа
@@ -806,7 +810,7 @@ as
            and G.CODE = sGROUP_CODE;
       exception
         when NO_DATA_FOUND then
-          P_EXCEPTION(0, 'Группа "%s" не найдена.', sGROUP_CODE);
+          P_EXCEPTION(0, 'Группа "%s" в организации "%s" не найдена', sGROUP_CODE, sORG_CODE);
       end;
 
     -- Посещаемость персоны в группе
@@ -854,7 +858,7 @@ as
           exception
             when NO_DATA_FOUND then
               nERROR_COUNT := nERROR_COUNT + 1;
-              sERROR := substr(sERROR||FORMAT_TEXT('%s. %s %s не найден(а).'||chr(10),
+              sERROR := substr(sERROR||FORMAT_TEXT('%s. %s %s не найден(а)'||chr(10),
                 to_char(nERROR_COUNT), sAGNFAMILYNAME, sAGNFIRSTNAME), 1, 4000);
               return;
           end;
@@ -862,11 +866,20 @@ as
 
       -- Посещаемость по дням
       for d in 1 .. nDAYS_IN_MONTH loop
-        nHOURS_FACT := nvl(UDO_F_S2N(UDO_F_GET_LIST_ITEM(sLINE, 8 + d, ';')), 0);
+        sDAY_VALUE := UDO_F_GET_LIST_ITEM(sLINE, 8 + d, ';');
+        nHOURS_FACT := nvl(UDO_F_S2N(sDAY_VALUE), 0);
         dDATE := int2date(d, nMONTH, nYEAR);
 
-        if nHOURS_FACT > 0 then
-          nPAYCARDDAY := PKG_PSPAYCARDTIME.CREATE_DAY(nCOMPANY, nPAYCARD_RN, dDATE);
+        if sDAY_VALUE = 'Б' then
+          nDAYSTYPE := nDAYSTYPE_B;
+          nHOURS_FACT := 0;
+        else
+          nDAYSTYPE := null;
+          nHOURS_FACT := nvl(UDO_F_S2N(sDAY_VALUE), 0);
+        end if;
+
+        if nHOURS_FACT > 0 or nDAYSTYPE is not null then
+          nPAYCARDDAY := PKG_PSPAYCARDTIME.CREATE_DAY(nCOMPANY, nPAYCARD_RN, dDATE, nDAYSTYPE, 1);
           begin
             select H.RN,
                    H.WORKEDHOURS
@@ -921,8 +934,11 @@ begin
        and substr(upper(T.SHORT_CODE), 1, 1) = 'Д';
   exception
     when NO_DATA_FOUND then
-      P_EXCEPTION(0, 'Основной тип часа с кодом Д не найден.');
+      P_EXCEPTION(0, 'Основной тип часа с кодом Д не найден');
   end;
+
+  -- Тип дня Б
+  FIND_SLDAYSTYPE_SHORTCODE(0, 0, nCOMPANY, 'Б', sDAYSTYPE_CODE, nDAYSTYPE_B);
 
   -- Обработка файла
   begin
@@ -959,8 +975,8 @@ begin
 end;
 /
 show errors;
-create or replace public synonym UDO_P_RECEIVE_TIMESHEET for UDO_P_RECEIVE_TIMESHEET;
-grant execute on UDO_P_RECEIVE_TIMESHEET to public;
+create or replace public synonym UDO_P_TIMESHEET_RECEIVE for UDO_P_TIMESHEET_RECEIVE;
+grant execute on UDO_P_TIMESHEET_RECEIVE to public;
 
 create or replace procedure UDO_P_PSORGGRP_LOAD
 -- Загрузка табеля посещаемости группы из CSV файла
@@ -986,12 +1002,14 @@ begin
   end;
 
   -- Обработка файла
-  UDO_P_RECEIVE_TIMESHEET(nCOMPANY, cDATA, sMESSAGE);
+  UDO_P_TIMESHEET_RECEIVE(nCOMPANY, cDATA, sMESSAGE);
 end;
 /
 show errors;
+create or replace public synonym UDO_P_PSORGGRP_LOAD for UDO_P_PSORGGRP_LOAD;
+grant execute on UDO_P_PSORGGRP_LOAD to public;
 
-create or replace procedure UDO_P_SEND_TIMESHEET
+create or replace procedure UDO_P_TIMESHEET_SEND
 -- Отправка табеля посещаемости в формате CSV
 (
   nORG_RN         in number,            -- RN организации
@@ -1009,6 +1027,7 @@ as
   sTEXT           PKG_STD.tSTRING;
   CR              varchar2(1) := chr(10);
   nWORKEDHOURS    PKG_STD.tSUMM;
+  sDAYSTYPE       PKG_STD.tSTRING;
 begin
   -- Создание буфера
   DBMS_LOB.CREATETEMPORARY(cDATA, true);
@@ -1082,18 +1101,22 @@ begin
       -- Посещаемость по дням
       for d in 1 .. nDAYS_IN_MONTH loop
         begin
-          select H.WORKEDHOURS
-            into nWORKEDHOURS
+          select H.WORKEDHOURS,
+                 DT.SHORT_CODE
+            into nWORKEDHOURS,
+                 sDAYSTYPE
             from PSPAYCARDDAY D,
+                 SLDAYSTYPE DT,
                  PSPAYCARDHOUR H,
                  SL_HOURS_TYPES T
            where D.PRN = card.PAYCARD_RN
+             and D.DAYSTYPE = DT.RN(+)
              and D.WORKDATE = int2date(d, nMONTH, nYEAR)
              and D.RN = H.PRN
              and H.HOURSTYPE = T.RN
              and T.BASE_SIGN = 1
              and substr(upper(T.SHORT_CODE), 1, 1) = 'Д';
-          sTEXT := sTEXT||nWORKEDHOURS;
+          sTEXT := sTEXT||nvl(sDAYSTYPE, nWORKEDHOURS);
         exception
           when NO_DATA_FOUND then
             null;
@@ -1107,8 +1130,8 @@ begin
 end;
 /
 show errors;
-create or replace public synonym UDO_P_SEND_TIMESHEET for UDO_P_SEND_TIMESHEET;
-grant execute on UDO_P_SEND_TIMESHEET to public;
+create or replace public synonym UDO_P_TIMESHEET_SEND for UDO_P_TIMESHEET_SEND;
+grant execute on UDO_P_TIMESHEET_SEND to public;
 
 create or replace procedure UDO_P_PSORGGRP_UNLOAD
 -- Отправка табеля посещаемости в формате CSV
@@ -1145,7 +1168,7 @@ begin
        and SL.DOCUMENT = G.RN
   )
   loop
-    UDO_P_SEND_TIMESHEET
+    UDO_P_TIMESHEET_SEND
     (
       nORG_RN         => cur.ORG_RN,        -- RN организации
       sGROUP          => cur.GROUP_CODE,    -- Мнемокод группы
@@ -1163,6 +1186,8 @@ begin
 end;
 /
 show errors;
+create or replace public synonym UDO_P_PSORGGRP_UNLOAD for UDO_P_PSORGGRP_UNLOAD;
+grant execute on UDO_P_PSORGGRP_UNLOAD to public;
 
 create or replace procedure UDO_P_PSORG_GET_GROUPS
 -- Получение списка групп учреждения

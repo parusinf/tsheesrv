@@ -96,7 +96,7 @@ async def receive_timesheet(db_key, org_rn, group, period=datetime.now()) -> tup
         async with connection.cursor() as cursor:
             filename_var = await cursor.var(str)
             content_var = await cursor.var(cx_Oracle.DB_TYPE_CLOB)
-            await cursor.callproc('UDO_P_SEND_TIMESHEET', [org_rn, group, period, filename_var, content_var])
+            await cursor.callproc('UDO_P_TIMESHEET_SEND', [org_rn, group, period, filename_var, content_var])
             content = content_var.getvalue().read()
             return encode_cp1251(content), filename_var.getvalue()
 
@@ -110,7 +110,7 @@ async def receive(org_inn, group, period=datetime.now()) -> tuple[bytes, str]:
         async with connection.cursor() as cursor:
             filename_var = await cursor.var(str)
             content_var = await cursor.var(cx_Oracle.DB_TYPE_CLOB)
-            await cursor.callproc('UDO_P_SEND_TIMESHEET', [org['org_rn'], group, period, filename_var, content_var])
+            await cursor.callproc('UDO_P_TIMESHEET_SEND', [org['org_rn'], group, period, filename_var, content_var])
             content = content_var.getvalue().read()
             return encode_cp1251(content), filename_var.getvalue()
 
@@ -120,6 +120,6 @@ async def send_timesheet(db_key, company_rn, content) -> str:
     async with db.pool[db_key].acquire() as connection:
         async with connection.cursor() as cursor:
             result_var = await cursor.var(str)
-            await cursor.callproc('UDO_P_RECEIVE_TIMESHEET', [company_rn, content, result_var])
+            await cursor.callproc('UDO_P_TIMESHEET_RECEIVE', [company_rn, content, result_var])
             await connection.commit()
             return result_var.getvalue()
