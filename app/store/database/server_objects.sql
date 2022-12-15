@@ -700,24 +700,6 @@ end;
 /
 show errors;
 
-create or replace trigger T_PAN_PSPAYCARDHOUR_BDELETE
-  before delete on PSPAYCARDHOUR for each row
-declare
-  nPSPAYCARD      PKG_STD.tREF;
-  dWORKDATE       date;
-begin
-  select D.PRN,
-         D.WORKDATE
-    into nPSPAYCARD,
-         dWORKDATE
-    from PSPAYCARDDAY D
-   where D.RN = :old.PRN;
-
-  P_PAN_PSTSBRD_CHECK(nPSPAYCARD, dWORKDATE);
-end;
-/
-show errors;
-
 create or replace trigger T_PAN_PSPAYCARDDAY_BINSERT
   before insert on PSPAYCARDDAY for each row
 begin
@@ -880,6 +862,9 @@ as
               return;
           end;
       end;
+
+      -- Проверка закрытия периода
+      P_PAN_PSTSBRD_CHECK(nPAYCARD_RN, dPERIOD_BEGIN);
 
       -- Посещаемость по дням
       for d in 1 .. nDAYS_IN_MONTH loop
