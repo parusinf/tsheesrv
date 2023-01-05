@@ -835,9 +835,9 @@ as
            and (PC.DATE_TO is null or PC.DATE_TO >= dPERIOD_BEGIN)
            and PC.PERSCARD = C.RN
            and C.AGENT = A.RN
-           and A.AGNFAMILYNAME = sAGNFAMILYNAME
-           and A.AGNFIRSTNAME = sAGNFIRSTNAME
-           and cmp_vc2(A.AGNLASTNAME, sAGNLASTNAME) = 1
+           and trim(A.AGNFAMILYNAME) = trim(sAGNFAMILYNAME)
+           and trim(A.AGNFIRSTNAME) = trim(sAGNFIRSTNAME)
+           and cmp_vc2(trim(A.AGNLASTNAME), trim(sAGNLASTNAME)) = 1
            and cmp_dat(A.AGNBURN, dAGNBURN) = 1;
       exception
         when NO_DATA_FOUND then
@@ -852,8 +852,8 @@ as
                and (PC.DATE_TO is null or PC.DATE_TO >= dPERIOD_BEGIN)
                and PC.PERSCARD = C.RN
                and C.AGENT = A.RN
-               and A.AGNFAMILYNAME = sAGNFAMILYNAME
-               and A.AGNFIRSTNAME = sAGNFIRSTNAME;
+               and trim(A.AGNFAMILYNAME) = trim(sAGNFAMILYNAME)
+               and trim(A.AGNFIRSTNAME) = trim(sAGNFIRSTNAME);
           exception
             when NO_DATA_FOUND then
               nERROR_COUNT := nERROR_COUNT + 1;
