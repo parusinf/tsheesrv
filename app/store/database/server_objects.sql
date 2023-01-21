@@ -716,6 +716,7 @@ create or replace procedure UDO_P_TIMESHEET_RECEIVE
   sMESSAGE        out varchar2          -- Результат
 )
 as
+  sDAY_TYPE_NU    PKG_STD.tSTRING := 'НУ';
   sLINE           varchar2(32767);
   nLINE_NUMBER    binary_integer := 1;
   dPERIOD         date;
@@ -752,7 +753,7 @@ as
   token           varchar2(4000);
   sobch           varchar2(4000);
   sERROR          PKG_STD.tSTRING;
-  nDAYSTYPE_B     PKG_STD.tREF;
+  nDAYSTYPE_NU    PKG_STD.tREF;
   sDAYSTYPE_CODE  PKG_STD.tSTRING;
 
   -- Обработка строки файла
@@ -783,8 +784,8 @@ as
 
     -- Организация
     elsif nLINE_NUMBER = 2 then
-      sORG_CODE      := UDO_F_GET_LIST_ITEM(sLINE, 1, ';');
-      sORG_INN       := UDO_F_GET_LIST_ITEM(sLINE, 2, ';');
+      sORG_CODE := UDO_F_GET_LIST_ITEM(sLINE, 1, ';');
+      sORG_INN := UDO_F_GET_LIST_ITEM(sLINE, 2, ';');
 
       begin
         select O.RN
@@ -799,7 +800,7 @@ as
 
     -- Группа
     elsif nLINE_NUMBER = 3 then
-      sGROUP_CODE    := UDO_F_GET_LIST_ITEM(sLINE, 1, ';');
+      sGROUP_CODE := UDO_F_GET_LIST_ITEM(sLINE, 1, ';');
 
       begin
         select G.RN
@@ -872,8 +873,8 @@ as
         nHOURS_FACT := nvl(UDO_F_S2N(sDAY_VALUE), 0);
         dDATE := int2date(d, nMONTH, nYEAR);
 
-        if sDAY_VALUE = 'Б' then
-          nDAYSTYPE := nDAYSTYPE_B;
+        if sDAY_VALUE = sDAY_TYPE_NU then
+          nDAYSTYPE := nDAYSTYPE_NU;
           nHOURS_FACT := 0;
         else
           nDAYSTYPE := null;
@@ -939,8 +940,8 @@ begin
       P_EXCEPTION(0, 'Основной тип часа с кодом Д не найден');
   end;
 
-  -- Тип дня Б
-  FIND_SLDAYSTYPE_SHORTCODE(0, 0, nCOMPANY, 'Б', sDAYSTYPE_CODE, nDAYSTYPE_B);
+  -- Тип дня
+  FIND_SLDAYSTYPE_SHORTCODE(0, 0, nCOMPANY, sDAY_TYPE_NU, sDAYSTYPE_CODE, nDAYSTYPE_NU);
 
   -- Обработка файла
   begin
@@ -1118,6 +1119,11 @@ begin
              and H.HOURSTYPE = T.RN
              and T.BASE_SIGN = 1
              and substr(upper(T.SHORT_CODE), 1, 1) = 'Д';
+
+          if sDAYSTYPE = 'Б' then
+            sDAYSTYPE := 'НУ';
+          end if;
+
           sTEXT := sTEXT||nvl(sDAYSTYPE, nWORKEDHOURS);
         exception
           when NO_DATA_FOUND then
