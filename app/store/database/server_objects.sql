@@ -6,7 +6,7 @@ create or replace function F_PSTS_CONFIRMED
 )
 return number                                -- 0: Табель не утвержден, 1: Табель утвержден
 as
-  nALL_CONF                    number;
+  nALL_CONF                 number(1);
 begin
   select case when CMP_NUM(count(C.PSORGGRP),sum(PR.TAB_CONF))=0 or count(C.PSORGGRP)=0 then 0 else 1 end
     into nALL_CONF
@@ -716,7 +716,6 @@ create or replace procedure UDO_P_TIMESHEET_RECEIVE
   sMESSAGE        out varchar2          -- Результат
 )
 as
-  sDAY_TYPE_NU    PKG_STD.tSTRING := 'НУ';
   sLINE           varchar2(32767);
   nLINE_NUMBER    binary_integer := 1;
   dPERIOD         date;
@@ -754,6 +753,7 @@ as
   sobch           varchar2(4000);
   sERROR          PKG_STD.tSTRING;
   nDAYSTYPE_NU    PKG_STD.tREF;
+  nDAYSTYPE_N     PKG_STD.tREF;
   sDAYSTYPE_CODE  PKG_STD.tSTRING;
 
   -- Обработка строки файла
@@ -869,16 +869,20 @@ as
 
       -- Посещаемость по дням
       for d in 1 .. nDAYS_IN_MONTH loop
-        sDAY_VALUE := UDO_F_GET_LIST_ITEM(sLINE, 8 + d, ';');
-        nHOURS_FACT := nvl(UDO_F_S2N(sDAY_VALUE), 0);
         dDATE := int2date(d, nMONTH, nYEAR);
+        sDAY_VALUE := UDO_F_GET_LIST_ITEM(sLINE, 8 + d, ';');
 
-        if sDAY_VALUE = sDAY_TYPE_NU then
-          nDAYSTYPE := nDAYSTYPE_NU;
+        -- Неявка по уважительной причине
+        if sDAY_VALUE in ('НУ', 'Б') then
           nHOURS_FACT := 0;
+          nDAYSTYPE := nDAYSTYPE_NU;
+        -- Неявка по неуважительной причине
+        elsif instr(sDAY_VALUE, 'НЯ') > 0 then
+          nHOURS_FACT := nvl(UDO_F_S2N(F_PAN_DROP_LITERS(sDAY_VALUE)), 0);
+          nDAYSTYPE := nDAYSTYPE_N;
         else
-          nDAYSTYPE := null;
           nHOURS_FACT := nvl(UDO_F_S2N(sDAY_VALUE), 0);
+          nDAYSTYPE := null;
         end if;
 
         if nHOURS_FACT > 0 or nDAYSTYPE is not null then
@@ -926,25 +930,25 @@ as
   end;
 
 begin
-  -- Тип часа
   begin
-    select T.RN,
-           T.CODE
-      into nHOURSTYPE,
-           sHOURSTYPE
-      from SL_HOURS_TYPES T
-     where T.BASE_SIGN = 1
-       and substr(upper(T.SHORT_CODE), 1, 1) = 'Д';
-  exception
-    when NO_DATA_FOUND then
-      P_EXCEPTION(0, 'Основной тип часа с кодом Д не найден');
-  end;
+    -- Тип часа
+    begin
+      select T.RN,
+             T.CODE
+        into nHOURSTYPE,
+             sHOURSTYPE
+        from SL_HOURS_TYPES T
+       where T.BASE_SIGN = 1
+         and substr(upper(T.SHORT_CODE), 1, 1) = 'Д';
+    exception
+      when NO_DATA_FOUND then
+        P_EXCEPTION(0, 'Основной тип часа с кодом Д не найден');
+    end;
 
-  -- Тип дня
-  FIND_SLDAYSTYPE_SHORTCODE(0, 0, nCOMPANY, sDAY_TYPE_NU, sDAYSTYPE_CODE, nDAYSTYPE_NU);
+    -- Типы дня
+    FIND_SLDAYSTYPE_SHORTCODE(0, 0, nCOMPANY, 'НУ', sDAYSTYPE_CODE, nDAYSTYPE_NU);
+    FIND_SLDAYSTYPE_SHORTCODE(0, 0, nCOMPANY, 'НЯ', sDAYSTYPE_CODE, nDAYSTYPE_N);
 
-  -- Обработка файла
-  begin
     l_length := dbms_lob.getlength(cDATA);
     for i in 1..l_length loop
       DBMS_LOB.READ
@@ -1031,6 +1035,7 @@ as
   CR              varchar2(1) := chr(10);
   nWORKEDHOURS    PKG_STD.tSUMM;
   sDAYSTYPE       PKG_STD.tSTRING;
+  sDAY_VALUE      PKG_STD.tSTRING;
 begin
   -- Создание буфера
   DBMS_LOB.CREATETEMPORARY(cDATA, true);
@@ -1120,11 +1125,15 @@ begin
              and T.BASE_SIGN = 1
              and substr(upper(T.SHORT_CODE), 1, 1) = 'Д';
 
-          if sDAYSTYPE = 'Б' then
-            sDAYSTYPE := 'НУ';
+          if sDAYSTYPE in ('НУ', 'Б') then
+            sDAY_VALUE := null;
+          elsif sDAYSTYPE = 'НЯ' then
+            sDAY_VALUE := nWORKEDHOURS||sDAYSTYPE;
+          else
+            sDAY_VALUE := nWORKEDHOURS;
           end if;
 
-          sTEXT := sTEXT||nvl(sDAYSTYPE, nWORKEDHOURS);
+          sTEXT := sTEXT||sDAY_VALUE;
         exception
           when NO_DATA_FOUND then
             null;
