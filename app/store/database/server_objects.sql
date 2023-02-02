@@ -752,6 +752,8 @@ as
   token           varchar2(4000);
   sobch           varchar2(4000);
   sERROR          PKG_STD.tSTRING;
+  nDAYSTYPE_B     PKG_STD.tREF;
+  nDAYSTYPE_O     PKG_STD.tREF;
   nDAYSTYPE_NU    PKG_STD.tREF;
   nDAYSTYPE_N     PKG_STD.tREF;
   sDAYSTYPE_CODE  PKG_STD.tSTRING;
@@ -872,14 +874,23 @@ as
         dDATE := int2date(d, nMONTH, nYEAR);
         sDAY_VALUE := UDO_F_GET_LIST_ITEM(sLINE, 8 + d, ';');
 
-        -- Неявка по уважительной причине
-        if sDAY_VALUE in ('НУ', 'Б') then
+        -- Неявка по болезни Б
+        if sDAY_VALUE = 'Б' then
+          nHOURS_FACT := 0;
+          nDAYSTYPE := nDAYSTYPE_B;
+        -- Отпуск О
+        elsif sDAY_VALUE = 'О' then
+          nHOURS_FACT := 0;
+          nDAYSTYPE := nDAYSTYPE_O;
+        -- Неявка по уважительной причине НУ
+        elsif sDAY_VALUE = 'НУ' then
           nHOURS_FACT := 0;
           nDAYSTYPE := nDAYSTYPE_NU;
-        -- Неявка по неуважительной причине
+        -- Неявка по неуважительной причине НЯ
         elsif instr(sDAY_VALUE, 'НЯ') > 0 then
           nHOURS_FACT := nvl(UDO_F_S2N(F_PAN_DROP_LITERS(sDAY_VALUE)), 0);
           nDAYSTYPE := nDAYSTYPE_N;
+        -- Явка
         else
           nHOURS_FACT := nvl(UDO_F_S2N(sDAY_VALUE), 0);
           nDAYSTYPE := null;
@@ -946,6 +957,8 @@ begin
     end;
 
     -- Типы дня
+    FIND_SLDAYSTYPE_SHORTCODE(0, 0, nCOMPANY, 'Б', sDAYSTYPE_CODE, nDAYSTYPE_B);
+    FIND_SLDAYSTYPE_SHORTCODE(0, 0, nCOMPANY, 'О', sDAYSTYPE_CODE, nDAYSTYPE_O);
     FIND_SLDAYSTYPE_SHORTCODE(0, 0, nCOMPANY, 'НУ', sDAYSTYPE_CODE, nDAYSTYPE_NU);
     FIND_SLDAYSTYPE_SHORTCODE(0, 0, nCOMPANY, 'НЯ', sDAYSTYPE_CODE, nDAYSTYPE_N);
 
@@ -1125,8 +1138,8 @@ begin
              and T.BASE_SIGN = 1
              and substr(upper(T.SHORT_CODE), 1, 1) = 'Д';
 
-          if sDAYSTYPE in ('НУ', 'Б') then
-            sDAY_VALUE := null;
+          if sDAYSTYPE in ('Б', 'О', 'НУ') then
+            sDAY_VALUE := sDAYSTYPE;
           elsif sDAYSTYPE = 'НЯ' then
             sDAY_VALUE := nWORKEDHOURS||sDAYSTYPE;
           else
