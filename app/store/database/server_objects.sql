@@ -113,59 +113,6 @@ end;
 /
 show errors;
 
-create or replace trigger T_PSPAYCARDHOUR_BDELETE
-  before delete on PSPAYCARDHOUR for each row
-declare
-  nPSORGGRP       PKG_STD.tREF;
-  sORGCODE        PSORG.CODE%type;
-  sGRCODE         PSORGGRP.CODE%type;
-  dWORKDATE       date;
-  nCOMPANY        PKG_STD.tREF;
-  nCRN            PKG_STD.tREF;
-begin
-  /* считывание параметров записи master-таблицы */
-  select CD.COMPANY,
-         CD.CRN,
-         C.PSORGGRP,
-         O.CODE   OCODE,
-         OG.CODE  OGCODE,
-         CD.WORKDATE
-    into nCOMPANY,
-         nCRN,
-         nPSORGGRP,
-         sORGCODE,
-         sGRCODE,
-         dWORKDATE
-    from PSPAYCARDDAY CD,
-         PSPAYCARD    C,
-         PSORG        O,
-         PSORGGRP     OG
-   where CD.RN      = :old.PRN
-     and C.RN       = CD.PRN
-     and C.PSORG    = O.RN
-     and C.PSORGGRP = OG.RN;
-
-  if :old.WORKEDHOURS!= 0 then
-    P_EXCEPTION(abs(F_PSTS_CONFIRMED(nCOMPANY, nPSORGGRP, dWORKDATE)-1),
-      'Невозможно удалить часы из расчётной карточки по группе "'||sGRCODE||'" учереждения "'||sORGCODE||'", т.к. по этой группе уже утверждён табель.' );
-    P_EXCEPTION(abs(F_PSTS_SAL_SHEET(nCOMPANY, nPSORGGRP, dWORKDATE)-1),
-      'Невозможно удалить часы из расчётной карточки по группе "'||sGRCODE||'" учереждения "'||sORGCODE||'", т.к. по этой группе сформирована ведомость.' );
-  end if;
-
-  /* регистрация события */
-  if ( PKG_IUD.PROLOGUE('PSPAYCARDHOUR', 'D') ) then
-    PKG_IUD.REG_RN('RN', :old.RN);
-    PKG_IUD.REG_COMPANY('COMPANY', :old.COMPANY);
-    PKG_IUD.REG_CRN('CRN', :old.CRN);
-    PKG_IUD.REG_PRN('PRN', :old.PRN);
-    PKG_IUD.REG(1, 'HOURSTYPE', :old.HOURSTYPE);
-    PKG_IUD.REG('WORKEDHOURS', :old.WORKEDHOURS);
-    PKG_IUD.EPILOGUE;
-  end if;
-end;
-/
-show errors;
-
 create or replace trigger T_PSPAYCARDDAY_BUPDATE
   before update on PSPAYCARDDAY for each row
 declare
@@ -631,29 +578,17 @@ create or replace function F_PAN_PSORGGRP_CHECK_CLOSE
 )
 return number
 as
-  nCOMPANY        PKG_STD.tREF;
   dCURRENT_PERIOD date;
   nRESULT         number(1);
 
 begin
-  -- считывание организации группы учреждения
-  begin
-    select G.COMPANY
-      into nCOMPANY
-      from PSORGGRP G
-     where G.RN = nRN;
-  exception
-    when NO_DATA_FOUND then
-      return null;
-  end;
-
   -- поиск закрытого периода группы
   begin
     select P.PERIOD
       into dCURRENT_PERIOD
       from PAN_PSORGGRPCP P
      where P.PRN = nRN
-       and P.PERIOD = trunc(dWORKDATE, 'month');
+       and P.PERIOD = last_day(dWORKDATE);
 
      nRESULT := 1;
   exception
@@ -699,7 +634,7 @@ begin
   -- проверка закрытия текущего расчётного периода
   if F_PAN_PSORGGRP_CHECK_CLOSE(nPSORGGRP, dWORKDATE) = 1 then
     P_EXCEPTION(0, 'Табель группы "%s" учреждения "%s" закрыт для исправления в периоде %s. Для исправления требуется открыть табель.',
-      to_char(dWORKDATE, 'mm/yyyy'));
+      sGROUP, sORG, to_char(dWORKDATE, 'mm/yyyy'));
   end if;
 end;
 /
@@ -919,8 +854,16 @@ as
           end;
       end;
 
-      -- Проверка закрытия периода
+      -- Проверка закрытия периода в группе
       P_PAN_PSTSBRD_CHECK(nPAYCARD_RN, dPERIOD_BEGIN);
+      -- Проверка утверждения табеля
+      P_EXCEPTION(abs(F_PSTS_CONFIRMED(nCOMPANY, nGROUP_RN, dDATE)-1),
+        'Невозможно исправить тип дня в расчётной карточке по группе "%s" учереждения "%s", т.к. по этой группе уже утверждён табель.',
+        sGROUP_CODE, sORG_CODE);
+      -- Проверка наличия ведомости
+      P_EXCEPTION(abs(F_PSTS_SAL_SHEET(nCOMPANY, nGROUP_RN, dDATE)-1),
+        'Невозможно исправить тип дня в расчётной карточке по группе "%s" учереждения "%s", т.к. по этой группе сформирована ведомость.',
+        sGROUP_CODE, sORG_CODE);
 
       -- Посещаемость по дням
       for d in 1 .. nDAYS_IN_MONTH loop
