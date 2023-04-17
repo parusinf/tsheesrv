@@ -1035,7 +1035,7 @@ create or replace procedure UDO_P_TIMESHEET_SEND
   cDATA           out clob              -- Табель посещаемости группы в формате CSV
 )
 as
-  dPERIOD_        date := nvl(dPERIOD, trunc(sysdate));
+  dPERIOD_        date := trunc(sysdate);
   nDAYS_IN_MONTH  binary_integer := D_DAY(last_day(dPERIOD_));
   nMONTH          binary_integer := D_MONTH(dPERIOD_);
   nYEAR           binary_integer := D_YEAR(dPERIOD_);
