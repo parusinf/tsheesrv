@@ -1249,7 +1249,6 @@ create or replace procedure UDO_P_GET_PSORGS
 )
 as
 begin
-  sORGS_JSON := '[';
   for cur in
   (
     select O.RN,
@@ -1277,11 +1276,12 @@ begin
       '{"org_rn": %s, "org_code": "%s", "org_name": "%s", "org_inn": "%s", "company_rn": %s}, ',
       cur.RN, cur.CODE, cur.NAME, sINN, cur.COMPANY);
   end loop;
-  if sORGS_JSON = '[' then
-    sORGS_JSON := '[]';
-  else
-    sORGS_JSON := substr(sORGS_JSON, 1, length(sORGS_JSON)-2)||']';
+
+  if sORGS_JSON is not null then
+    sORGS_JSON := substr(sORGS_JSON, 1, length(sORGS_JSON)-2);
   end if;
+
+  sORGS_JSON := '['||sORGS_JSON||']';
 end;
 /
 show errors;
@@ -1330,3 +1330,519 @@ end;
 show errors;
 create or replace public synonym UDO_P_GET_PSORG for UDO_P_GET_PSORG;
 grant execute on UDO_P_GET_PSORG to public;
+
+create or replace trigger T_PSTSBRD_BINSERT
+  before insert on PSTSBRD for each row
+begin
+  :new.F1 := PKG_EXT.IIF( :new.F1 = 0, null, :new.F1 );
+  :new.F2 := PKG_EXT.IIF( :new.F2 = 0, null, :new.F2 );
+  :new.F3 := PKG_EXT.IIF( :new.F3 = 0, null, :new.F3 );
+  :new.F4 := PKG_EXT.IIF( :new.F4 = 0, null, :new.F4 );
+  :new.F5 := PKG_EXT.IIF( :new.F5 = 0, null, :new.F5 );
+  :new.F6 := PKG_EXT.IIF( :new.F6 = 0, null, :new.F6 );
+  :new.F7 := PKG_EXT.IIF( :new.F7 = 0, null, :new.F7 );
+  :new.F8 := PKG_EXT.IIF( :new.F8 = 0, null, :new.F8 );
+  :new.F9 := PKG_EXT.IIF( :new.F9 = 0, null, :new.F9 );
+  :new.F10 := PKG_EXT.IIF( :new.F10 = 0, null, :new.F10 );
+  :new.F11 := PKG_EXT.IIF( :new.F11 = 0, null, :new.F11 );
+  :new.F12 := PKG_EXT.IIF( :new.F12 = 0, null, :new.F12 );
+  :new.F13 := PKG_EXT.IIF( :new.F13 = 0, null, :new.F13 );
+  :new.F14 := PKG_EXT.IIF( :new.F14 = 0, null, :new.F14 );
+  :new.F15 := PKG_EXT.IIF( :new.F15 = 0, null, :new.F15 );
+  :new.F16 := PKG_EXT.IIF( :new.F16 = 0, null, :new.F16 );
+  :new.F17 := PKG_EXT.IIF( :new.F17 = 0, null, :new.F17 );
+  :new.F18 := PKG_EXT.IIF( :new.F18 = 0, null, :new.F18 );
+  :new.F19 := PKG_EXT.IIF( :new.F19 = 0, null, :new.F19 );
+  :new.F20 := PKG_EXT.IIF( :new.F20 = 0, null, :new.F20 );
+  :new.F21 := PKG_EXT.IIF( :new.F21 = 0, null, :new.F21 );
+  :new.F22 := PKG_EXT.IIF( :new.F22 = 0, null, :new.F22 );
+  :new.F23 := PKG_EXT.IIF( :new.F23 = 0, null, :new.F23 );
+  :new.F24 := PKG_EXT.IIF( :new.F24 = 0, null, :new.F24 );
+  :new.F25 := PKG_EXT.IIF( :new.F25 = 0, null, :new.F25 );
+  :new.F26 := PKG_EXT.IIF( :new.F26 = 0, null, :new.F26 );
+  :new.F27 := PKG_EXT.IIF( :new.F27 = 0, null, :new.F27 );
+  :new.F28 := PKG_EXT.IIF( :new.F28 = 0, null, :new.F28 );
+  :new.F29 := PKG_EXT.IIF( :new.F29 = 0, null, :new.F29 );
+  :new.F30 := PKG_EXT.IIF( :new.F30 = 0, null, :new.F30 );
+  :new.F31 := PKG_EXT.IIF( :new.F31 = 0, null, :new.F31 );
+
+  :new.FD := PKG_EXT.IIF( :new.FD = 0, null, :new.FD );
+  :new.FH := PKG_EXT.IIF( :new.FH = 0, null, :new.FH );
+
+  if :new.F1 is not null and :new.D1 is not null and :new.D1 != 'НЯ' then
+    P_EXCEPTION(0, '1 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F1 is null and :new.D1 = 'НЯ' then
+    P_EXCEPTION(0, '1 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F2 is not null and :new.D2 is not null and :new.D2 != 'НЯ' then
+    P_EXCEPTION(0, '2 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F2 is null and :new.D2 = 'НЯ' then
+    P_EXCEPTION(0, '2 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F3 is not null and :new.D3 is not null and :new.D3 != 'НЯ' then
+    P_EXCEPTION(0, '3 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F3 is null and :new.D3 = 'НЯ' then
+    P_EXCEPTION(0, '3 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F4 is not null and :new.D4 is not null and :new.D4 != 'НЯ' then
+    P_EXCEPTION(0, '4 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F4 is null and :new.D4 = 'НЯ' then
+    P_EXCEPTION(0, '4 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F5 is not null and :new.D5 is not null and :new.D5 != 'НЯ' then
+    P_EXCEPTION(0, '5 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F5 is null and :new.D5 = 'НЯ' then
+    P_EXCEPTION(0, '5 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F6 is not null and :new.D6 is not null and :new.D6 != 'НЯ' then
+    P_EXCEPTION(0, '6 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F6 is null and :new.D6 = 'НЯ' then
+    P_EXCEPTION(0, '6 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F7 is not null and :new.D7 is not null and :new.D7 != 'НЯ' then
+    P_EXCEPTION(0, '7 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F7 is null and :new.D7 = 'НЯ' then
+    P_EXCEPTION(0, '7 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F8 is not null and :new.D8 is not null and :new.D8 != 'НЯ' then
+    P_EXCEPTION(0, '8 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F8 is null and :new.D8 = 'НЯ' then
+    P_EXCEPTION(0, '8 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F9 is not null and :new.D9 is not null and :new.D9 != 'НЯ' then
+    P_EXCEPTION(0, '9 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F9 is null and :new.D9 = 'НЯ' then
+    P_EXCEPTION(0, '9 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F10 is not null and :new.D10 is not null and :new.D10 != 'НЯ' then
+    P_EXCEPTION(0, '10 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F10 is null and :new.D10 = 'НЯ' then
+    P_EXCEPTION(0, '10 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F11 is not null and :new.D11 is not null and :new.D11 != 'НЯ' then
+    P_EXCEPTION(0, '11 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F11 is null and :new.D11 = 'НЯ' then
+    P_EXCEPTION(0, '11 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F12 is not null and :new.D12 is not null and :new.D12 != 'НЯ' then
+    P_EXCEPTION(0, '12 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F12 is null and :new.D12 = 'НЯ' then
+    P_EXCEPTION(0, '12 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F13 is not null and :new.D13 is not null and :new.D13 != 'НЯ' then
+    P_EXCEPTION(0, '13 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F13 is null and :new.D13 = 'НЯ' then
+    P_EXCEPTION(0, '13 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F14 is not null and :new.D14 is not null and :new.D14 != 'НЯ' then
+    P_EXCEPTION(0, '14 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F14 is null and :new.D14 = 'НЯ' then
+    P_EXCEPTION(0, '14 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F15 is not null and :new.D15 is not null and :new.D15 != 'НЯ' then
+    P_EXCEPTION(0, '15 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F15 is null and :new.D15 = 'НЯ' then
+    P_EXCEPTION(0, '15 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F16 is not null and :new.D16 is not null and :new.D16 != 'НЯ' then
+    P_EXCEPTION(0, '16 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F16 is null and :new.D16 = 'НЯ' then
+    P_EXCEPTION(0, '16 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F17 is not null and :new.D17 is not null and :new.D17 != 'НЯ' then
+    P_EXCEPTION(0, '17 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F17 is null and :new.D17 = 'НЯ' then
+    P_EXCEPTION(0, '17 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F18 is not null and :new.D18 is not null and :new.D18 != 'НЯ' then
+    P_EXCEPTION(0, '18 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F18 is null and :new.D18 = 'НЯ' then
+    P_EXCEPTION(0, '18 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F19 is not null and :new.D19 is not null and :new.D19 != 'НЯ' then
+    P_EXCEPTION(0, '19 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F19 is null and :new.D19 = 'НЯ' then
+    P_EXCEPTION(0, '19 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F20 is not null and :new.D20 is not null and :new.D20 != 'НЯ' then
+    P_EXCEPTION(0, '20 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F20 is null and :new.D20 = 'НЯ' then
+    P_EXCEPTION(0, '20 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F21 is not null and :new.D21 is not null and :new.D21 != 'НЯ' then
+    P_EXCEPTION(0, '21 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F21 is null and :new.D21 = 'НЯ' then
+    P_EXCEPTION(0, '21 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F22 is not null and :new.D22 is not null and :new.D22 != 'НЯ' then
+    P_EXCEPTION(0, '22 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F22 is null and :new.D22 = 'НЯ' then
+    P_EXCEPTION(0, '22 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F23 is not null and :new.D23 is not null and :new.D23 != 'НЯ' then
+    P_EXCEPTION(0, '23 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F23 is null and :new.D23 = 'НЯ' then
+    P_EXCEPTION(0, '23 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F24 is not null and :new.D24 is not null and :new.D24 != 'НЯ' then
+    P_EXCEPTION(0, '24 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F24 is null and :new.D24 = 'НЯ' then
+    P_EXCEPTION(0, '24 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F25 is not null and :new.D25 is not null and :new.D25 != 'НЯ' then
+    P_EXCEPTION(0, '25 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F25 is null and :new.D25 = 'НЯ' then
+    P_EXCEPTION(0, '25 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F26 is not null and :new.D26 is not null and :new.D26 != 'НЯ' then
+    P_EXCEPTION(0, '26 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F26 is null and :new.D26 = 'НЯ' then
+    P_EXCEPTION(0, '26 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F27 is not null and :new.D27 is not null and :new.D27 != 'НЯ' then
+    P_EXCEPTION(0, '27 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F27 is null and :new.D27 = 'НЯ' then
+    P_EXCEPTION(0, '27 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F28 is not null and :new.D28 is not null and :new.D28 != 'НЯ' then
+    P_EXCEPTION(0, '28 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F28 is null and :new.D28 = 'НЯ' then
+    P_EXCEPTION(0, '28 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F29 is not null and :new.D29 is not null and :new.D29 != 'НЯ' then
+    P_EXCEPTION(0, '29 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F29 is null and :new.D29 = 'НЯ' then
+    P_EXCEPTION(0, '29 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F30 is not null and :new.D30 is not null and :new.D30 != 'НЯ' then
+    P_EXCEPTION(0, '30 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F30 is null and :new.D30 = 'НЯ' then
+    P_EXCEPTION(0, '30 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F31 is not null and :new.D31 is not null and :new.D31 != 'НЯ' then
+    P_EXCEPTION(0, '31 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F31 is null and :new.D31 = 'НЯ' then
+    P_EXCEPTION(0, '31 число: для НЯ требуются часы.');
+  end if;
+end;
+/
+show errors;
+
+create or replace trigger T_PSTSBRD_BUPDATE
+  before update on PSTSBRD for each row
+begin
+  :new.F1 := PKG_EXT.IIF( :new.F1 = 0, null, :new.F1 );
+  :new.F2 := PKG_EXT.IIF( :new.F2 = 0, null, :new.F2 );
+  :new.F3 := PKG_EXT.IIF( :new.F3 = 0, null, :new.F3 );
+  :new.F4 := PKG_EXT.IIF( :new.F4 = 0, null, :new.F4 );
+  :new.F5 := PKG_EXT.IIF( :new.F5 = 0, null, :new.F5 );
+  :new.F6 := PKG_EXT.IIF( :new.F6 = 0, null, :new.F6 );
+  :new.F7 := PKG_EXT.IIF( :new.F7 = 0, null, :new.F7 );
+  :new.F8 := PKG_EXT.IIF( :new.F8 = 0, null, :new.F8 );
+  :new.F9 := PKG_EXT.IIF( :new.F9 = 0, null, :new.F9 );
+  :new.F10 := PKG_EXT.IIF( :new.F10 = 0, null, :new.F10 );
+  :new.F11 := PKG_EXT.IIF( :new.F11 = 0, null, :new.F11 );
+  :new.F12 := PKG_EXT.IIF( :new.F12 = 0, null, :new.F12 );
+  :new.F13 := PKG_EXT.IIF( :new.F13 = 0, null, :new.F13 );
+  :new.F14 := PKG_EXT.IIF( :new.F14 = 0, null, :new.F14 );
+  :new.F15 := PKG_EXT.IIF( :new.F15 = 0, null, :new.F15 );
+  :new.F16 := PKG_EXT.IIF( :new.F16 = 0, null, :new.F16 );
+  :new.F17 := PKG_EXT.IIF( :new.F17 = 0, null, :new.F17 );
+  :new.F18 := PKG_EXT.IIF( :new.F18 = 0, null, :new.F18 );
+  :new.F19 := PKG_EXT.IIF( :new.F19 = 0, null, :new.F19 );
+  :new.F20 := PKG_EXT.IIF( :new.F20 = 0, null, :new.F20 );
+  :new.F21 := PKG_EXT.IIF( :new.F21 = 0, null, :new.F21 );
+  :new.F22 := PKG_EXT.IIF( :new.F22 = 0, null, :new.F22 );
+  :new.F23 := PKG_EXT.IIF( :new.F23 = 0, null, :new.F23 );
+  :new.F24 := PKG_EXT.IIF( :new.F24 = 0, null, :new.F24 );
+  :new.F25 := PKG_EXT.IIF( :new.F25 = 0, null, :new.F25 );
+  :new.F26 := PKG_EXT.IIF( :new.F26 = 0, null, :new.F26 );
+  :new.F27 := PKG_EXT.IIF( :new.F27 = 0, null, :new.F27 );
+  :new.F28 := PKG_EXT.IIF( :new.F28 = 0, null, :new.F28 );
+  :new.F29 := PKG_EXT.IIF( :new.F29 = 0, null, :new.F29 );
+  :new.F30 := PKG_EXT.IIF( :new.F30 = 0, null, :new.F30 );
+  :new.F31 := PKG_EXT.IIF( :new.F31 = 0, null, :new.F31 );
+
+  :new.FD := PKG_EXT.IIF( :new.FD = 0, null, :new.FD );
+  :new.FH := PKG_EXT.IIF( :new.FH = 0, null, :new.FH );
+
+  if :new.F1 is not null and :new.D1 is not null and :new.D1 != 'НЯ' then
+    P_EXCEPTION(0, '1 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F1 is null and :new.D1 = 'НЯ' then
+    P_EXCEPTION(0, '1 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F2 is not null and :new.D2 is not null and :new.D2 != 'НЯ' then
+    P_EXCEPTION(0, '2 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F2 is null and :new.D2 = 'НЯ' then
+    P_EXCEPTION(0, '2 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F3 is not null and :new.D3 is not null and :new.D3 != 'НЯ' then
+    P_EXCEPTION(0, '3 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F3 is null and :new.D3 = 'НЯ' then
+    P_EXCEPTION(0, '3 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F4 is not null and :new.D4 is not null and :new.D4 != 'НЯ' then
+    P_EXCEPTION(0, '4 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F4 is null and :new.D4 = 'НЯ' then
+    P_EXCEPTION(0, '4 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F5 is not null and :new.D5 is not null and :new.D5 != 'НЯ' then
+    P_EXCEPTION(0, '5 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F5 is null and :new.D5 = 'НЯ' then
+    P_EXCEPTION(0, '5 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F6 is not null and :new.D6 is not null and :new.D6 != 'НЯ' then
+    P_EXCEPTION(0, '6 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F6 is null and :new.D6 = 'НЯ' then
+    P_EXCEPTION(0, '6 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F7 is not null and :new.D7 is not null and :new.D7 != 'НЯ' then
+    P_EXCEPTION(0, '7 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F7 is null and :new.D7 = 'НЯ' then
+    P_EXCEPTION(0, '7 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F8 is not null and :new.D8 is not null and :new.D8 != 'НЯ' then
+    P_EXCEPTION(0, '8 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F8 is null and :new.D8 = 'НЯ' then
+    P_EXCEPTION(0, '8 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F9 is not null and :new.D9 is not null and :new.D9 != 'НЯ' then
+    P_EXCEPTION(0, '9 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F9 is null and :new.D9 = 'НЯ' then
+    P_EXCEPTION(0, '9 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F10 is not null and :new.D10 is not null and :new.D10 != 'НЯ' then
+    P_EXCEPTION(0, '10 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F10 is null and :new.D10 = 'НЯ' then
+    P_EXCEPTION(0, '10 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F11 is not null and :new.D11 is not null and :new.D11 != 'НЯ' then
+    P_EXCEPTION(0, '11 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F11 is null and :new.D11 = 'НЯ' then
+    P_EXCEPTION(0, '11 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F12 is not null and :new.D12 is not null and :new.D12 != 'НЯ' then
+    P_EXCEPTION(0, '12 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F12 is null and :new.D12 = 'НЯ' then
+    P_EXCEPTION(0, '12 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F13 is not null and :new.D13 is not null and :new.D13 != 'НЯ' then
+    P_EXCEPTION(0, '13 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F13 is null and :new.D13 = 'НЯ' then
+    P_EXCEPTION(0, '13 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F14 is not null and :new.D14 is not null and :new.D14 != 'НЯ' then
+    P_EXCEPTION(0, '14 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F14 is null and :new.D14 = 'НЯ' then
+    P_EXCEPTION(0, '14 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F15 is not null and :new.D15 is not null and :new.D15 != 'НЯ' then
+    P_EXCEPTION(0, '15 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F15 is null and :new.D15 = 'НЯ' then
+    P_EXCEPTION(0, '15 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F16 is not null and :new.D16 is not null and :new.D16 != 'НЯ' then
+    P_EXCEPTION(0, '16 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F16 is null and :new.D16 = 'НЯ' then
+    P_EXCEPTION(0, '16 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F17 is not null and :new.D17 is not null and :new.D17 != 'НЯ' then
+    P_EXCEPTION(0, '17 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F17 is null and :new.D17 = 'НЯ' then
+    P_EXCEPTION(0, '17 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F18 is not null and :new.D18 is not null and :new.D18 != 'НЯ' then
+    P_EXCEPTION(0, '18 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F18 is null and :new.D18 = 'НЯ' then
+    P_EXCEPTION(0, '18 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F19 is not null and :new.D19 is not null and :new.D19 != 'НЯ' then
+    P_EXCEPTION(0, '19 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F19 is null and :new.D19 = 'НЯ' then
+    P_EXCEPTION(0, '19 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F20 is not null and :new.D20 is not null and :new.D20 != 'НЯ' then
+    P_EXCEPTION(0, '20 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F20 is null and :new.D20 = 'НЯ' then
+    P_EXCEPTION(0, '20 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F21 is not null and :new.D21 is not null and :new.D21 != 'НЯ' then
+    P_EXCEPTION(0, '21 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F21 is null and :new.D21 = 'НЯ' then
+    P_EXCEPTION(0, '21 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F22 is not null and :new.D22 is not null and :new.D22 != 'НЯ' then
+    P_EXCEPTION(0, '22 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F22 is null and :new.D22 = 'НЯ' then
+    P_EXCEPTION(0, '22 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F23 is not null and :new.D23 is not null and :new.D23 != 'НЯ' then
+    P_EXCEPTION(0, '23 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F23 is null and :new.D23 = 'НЯ' then
+    P_EXCEPTION(0, '23 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F24 is not null and :new.D24 is not null and :new.D24 != 'НЯ' then
+    P_EXCEPTION(0, '24 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F24 is null and :new.D24 = 'НЯ' then
+    P_EXCEPTION(0, '24 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F25 is not null and :new.D25 is not null and :new.D25 != 'НЯ' then
+    P_EXCEPTION(0, '25 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F25 is null and :new.D25 = 'НЯ' then
+    P_EXCEPTION(0, '25 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F26 is not null and :new.D26 is not null and :new.D26 != 'НЯ' then
+    P_EXCEPTION(0, '26 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F26 is null and :new.D26 = 'НЯ' then
+    P_EXCEPTION(0, '26 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F27 is not null and :new.D27 is not null and :new.D27 != 'НЯ' then
+    P_EXCEPTION(0, '27 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F27 is null and :new.D27 = 'НЯ' then
+    P_EXCEPTION(0, '27 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F28 is not null and :new.D28 is not null and :new.D28 != 'НЯ' then
+    P_EXCEPTION(0, '28 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F28 is null and :new.D28 = 'НЯ' then
+    P_EXCEPTION(0, '28 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F29 is not null and :new.D29 is not null and :new.D29 != 'НЯ' then
+    P_EXCEPTION(0, '29 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F29 is null and :new.D29 = 'НЯ' then
+    P_EXCEPTION(0, '29 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F30 is not null and :new.D30 is not null and :new.D30 != 'НЯ' then
+    P_EXCEPTION(0, '30 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F30 is null and :new.D30 = 'НЯ' then
+    P_EXCEPTION(0, '30 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F31 is not null and :new.D31 is not null and :new.D31 != 'НЯ' then
+    P_EXCEPTION(0, '31 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F31 is null and :new.D31 = 'НЯ' then
+    P_EXCEPTION(0, '31 число: для НЯ требуются часы.');
+  end if;
+end;
+/
+show errors;
