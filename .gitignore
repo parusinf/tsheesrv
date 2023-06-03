@@ -4,3 +4,8 @@ venv/
 config/token.yaml
 config/database.yaml
 tsheesrv.db
+tsheesrvservice.err.log
+tsheesrvservice.err.log.old
+tsheesrvservice.out.log
+tsheesrvservice.out.log.old
+tsheesrvservice.wrapper.log                                                                                                
