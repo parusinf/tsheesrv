@@ -1,0 +1,10 @@
+<service>
+  <id>tsheesrv</id>
+  <name>tsheesrv</name>
+  <description>tsheesrv</description>
+  <executable>c:\opt\Python311\python.exe</executable>
+  <logpath>c:\srv\tsheesrv\</logpath>
+  <logmode>roll</logmode>
+  <depend></depend>
+  <startargument>c:\srv\tsheesrv\main.py</startargument>
+</service>

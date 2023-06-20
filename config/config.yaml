@@ -35,7 +35,7 @@ developer:
   telegram: '@nikitinpa'
 
 use_log_file: False
-log_file: /opt/var/log/tsheebot.log
+log_file: /var/log/tsheebot.log
 
 use_pid_file: False
-pid_file: /tmp/tsheebot.pid
+pid_file: /var/run/tsheebot.pid
