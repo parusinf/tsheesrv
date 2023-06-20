@@ -705,7 +705,7 @@ create or replace procedure UDO_P_TIMESHEET_RECEIVE
 )
 as
   sLINE           varchar2(32767);
-  nLINE_NUMBER    binary_integer := 1;
+  nLINE_NUMBER    pls_integer := 1;
   dPERIOD         date;
   sAGNFAMILYNAME  PKG_STD.tSTRING;
   sAGNFIRSTNAME   PKG_STD.tSTRING;
@@ -719,11 +719,11 @@ as
   nORG_RN         PKG_STD.tREF;
   nGROUP_RN       PKG_STD.tREF;
   nPAYCARD_RN     PKG_STD.tREF;
-  nERROR_COUNT    binary_integer := 0;
-  nSUCCESS_COUNT  binary_integer := 0;
-  nDAYS_IN_MONTH  binary_integer;
-  nMONTH          binary_integer;
-  nYEAR           binary_integer;
+  nERROR_COUNT    pls_integer := 0;
+  nSUCCESS_COUNT  pls_integer := 0;
+  nDAYS_IN_MONTH  pls_integer;
+  nMONTH          pls_integer;
+  nYEAR           pls_integer;
   nHOURSTYPE      PKG_STD.tREF;
   sHOURSTYPE      PKG_STD.tSTRING;
   dDATE           date;
@@ -745,6 +745,8 @@ as
   nDAYSTYPE_NU    PKG_STD.tREF;
   nDAYSTYPE_N     PKG_STD.tREF;
   sDAYSTYPE_CODE  PKG_STD.tSTRING;
+  nENPERIOD       PKG_STD.tREF;
+  nTMP            pls_integer;
 
   -- Обработка строки файла
   procedure PERFORM_LINE
@@ -865,6 +867,20 @@ as
         'Невозможно исправить тип дня в расчётной карточке по группе "%s" учереждения "%s", т.к. по этой группе сформирована ведомость.',
         sGROUP_CODE, sORG_CODE);
 
+      -- Рабочий календарь по графику работ в текущем периоде
+      begin
+        select EP.RN
+          into nENPERIOD
+          from PSPAYCARD PC,
+               ENPERIOD EP
+         where PC.RN = nPAYCARD_RN
+           and dPERIOD between EP.STARTDATE and EP.ENDDATE
+           and EP.SCHEDULE = PC.SLSCHEDULE;
+      exception
+        when NO_DATA_FOUND then
+          nENPERIOD := null;
+      end;
+
       -- Посещаемость по дням
       for d in 1 .. nDAYS_IN_MONTH loop
         dDATE := int2date(d, nMONTH, nYEAR);
@@ -894,6 +910,31 @@ as
 
         if nHOURS_FACT > 0 or nDAYSTYPE is not null then
           nPAYCARDDAY := PKG_PSPAYCARDTIME.CREATE_DAY(nCOMPANY, nPAYCARD_RN, dDATE, nDAYSTYPE, 1);
+
+          -- Проверка дня табеля по рабочему календарю
+          if nENPERIOD is not null then
+            begin
+              select 1
+                into nTMP
+                from WORKDAYS D
+               where D.PRN = nENPERIOD
+                 and D.DAYS = d
+                 and exists
+                     (
+                       select 1
+                         from WORKDAYSTR DS
+                        where DS.PRN = D.RN
+                          and DS.HOURSNORM != 0
+                     );
+            exception
+              when NO_DATA_FOUND then
+                nERROR_COUNT := nERROR_COUNT + 1;
+                sERROR := substr(sERROR||FORMAT_TEXT('%s. %s %s дата %s вне графика.'||chr(10),
+                  to_char(nERROR_COUNT), sAGNFAMILYNAME, sAGNFIRSTNAME, to_char(dDATE, 'dd.mm.yyyy')), 1, 4000);
+                continue;
+            end;
+          end if;
+
           begin
             select H.RN,
                    H.WORKEDHOURS
