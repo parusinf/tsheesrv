@@ -747,6 +747,7 @@ as
   sDAYSTYPE_CODE  PKG_STD.tSTRING;
   nENPERIOD       PKG_STD.tREF;
   nTMP            pls_integer;
+  nSCHEDULE_HOURS PKG_STD.tSUMM;
 
   -- Обработка строки файла
   procedure PERFORM_LINE
@@ -867,15 +868,28 @@ as
         'Невозможно исправить тип дня в расчётной карточке по группе "%s" учереждения "%s", т.к. по этой группе сформирована ведомость.',
         sGROUP_CODE, sORG_CODE);
 
-      -- Рабочий календарь по графику работ в текущем периоде
+      -- Проверка дней вне графика: рабочий календарь по графику работ в текущем периоде
       begin
-        select EP.RN
-          into nENPERIOD
+        select EP.RN,
+               (
+                 select nvl(sum(SD.HOURS_RATE), 0)
+                   from SLSTRSCHEDULE SS,
+                        SLSCHEDDATE SD
+                  where SS.PRN = PC.SLSCHEDULE
+                    and SD.PRN = SS.RN
+               ) SCHEDULE_HOURS
+          into nENPERIOD,
+               nSCHEDULE_HOURS
           from PSPAYCARD PC,
                ENPERIOD EP
          where PC.RN = nPAYCARD_RN
            and dPERIOD between EP.STARTDATE and EP.ENDDATE
            and EP.SCHEDULE = PC.SLSCHEDULE;
+
+        -- Проверяем только для графика с суммой часов 60 = 5 дней * 12 часов
+        if nSCHEDULE_HOURS != 60 then
+          nENPERIOD := null;
+        end if;
       exception
         when NO_DATA_FOUND then
           nENPERIOD := null;
