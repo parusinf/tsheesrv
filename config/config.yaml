@@ -22,7 +22,7 @@ webapp:
   port: 5001
 
 sqlite:
-  database: /var/lib/sqlite/tsheesrv.db
+  database: tsheesrv.db
   echo: False
 
 oracle:
@@ -35,7 +35,7 @@ developer:
   telegram: '@nikitinpa'
 
 use_log_file: False
-log_file: /var/log/tsheebot.log
+log_file: /var/log/tsheesrv.log
 
 use_pid_file: False
-pid_file: /var/run/tsheebot.pid
+pid_file: /var/run/tsheesrv.pid
