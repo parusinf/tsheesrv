@@ -22,7 +22,7 @@ webapp:
   port: 5001
 
 sqlite:
-  database: tsheesrv.db
+  database: /var/lib/sqlite/tsheesrv.db
   echo: False
 
 oracle:
