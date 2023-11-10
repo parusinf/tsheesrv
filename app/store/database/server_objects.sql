@@ -1,10 +1,10 @@
 create or replace function F_PSTS_CONFIRMED
 (
-  nCOMPANY                  in number,       -- РћСЂРіР°РЅРёР·Р°С†РёСЏ
-  nRN                       in number,       -- RN РіСЂСѓРїРїС‹ (С‚Р°Р±РµР»СЏ)
-  dWORKDATE                 in date          -- РџРµСЂРёРѕРґ С‚Р°Р±РµР»СЏ
+  nCOMPANY                  in number,       -- Организация
+  nRN                       in number,       -- RN группы (табеля)
+  dWORKDATE                 in date          -- Период табеля
 )
-return number                                -- 0: РўР°Р±РµР»СЊ РЅРµ СѓС‚РІРµСЂР¶РґРµРЅ, 1: РўР°Р±РµР»СЊ СѓС‚РІРµСЂР¶РґРµРЅ
+return number                                -- 0: Табель не утвержден, 1: Табель утвержден
 as
   nALL_CONF                 number(1);
 begin
@@ -26,11 +26,11 @@ show errors;
 
 create or replace function F_PSTS_SAL_SHEET
 (
-  nCOMPANY        in number,            -- РћСЂРіР°РЅРёР·Р°С†РёСЏ
-  nRN             in number,            -- RN РіСЂСѓРїРїС‹ (С‚Р°Р±РµР»СЏ)
-  dWORKDATE       in date               -- РџРµСЂРёРѕРґ С‚Р°Р±РµР»СЏ
+  nCOMPANY        in number,            -- Организация
+  nRN             in number,            -- RN группы (табеля)
+  dWORKDATE       in date               -- Период табеля
 )
-return number                                -- 0: Р’РµРґРѕРјРѕСЃС‚СЊ РЅРµ СЃС„РѕСЂРјРёСЂРѕРІР°РЅР°, 1: Р’РµРґРѕРјРѕСЃС‚СЊ СЃС„РѕСЂРјРёСЂРѕРІР°РЅР°
+return number                                -- 0: Ведомость не сформирована, 1: Ведомость сформирована
 as
   nSAL_SHEET      number;
 begin
@@ -65,7 +65,7 @@ declare
   sGRCODE         PSORGGRP.CODE%type;
   dWORKDATE       date;
 begin
-  /* РїСЂРѕРІРµСЂРєР° РЅРµРёР·РјРµРЅРЅРѕСЃС‚Рё Р·РЅР°С‡РµРЅРёР№ РїРѕР»РµР№ */
+  /* проверка неизменности значений полей */
   PKG_UNCHANGE.CHECK_NE('PSPAYCARDHOUR', 'RN', :new.RN, :old.RN);
   PKG_UNCHANGE.CHECK_NE('PSPAYCARDHOUR', 'COMPANY', :new.COMPANY, :old.COMPANY);
   PKG_UNCHANGE.CHECK_NE('PSPAYCARDHOUR', 'PRN', :new.PRN, :old.PRN);
@@ -89,17 +89,17 @@ begin
      and C.PSORGGRP = OG.RN;
 
     p_exception(abs(F_PSTS_CONFIRMED(:new.COMPANY, nPSORGGRP, dWORKDATE)-1),
-      'РќРµРІРѕР·РјРѕР¶РЅРѕ РёСЃРїСЂР°РІРёС‚СЊ С‡Р°СЃС‹ РІ СЂР°СЃС‡С‘С‚РЅРѕР№ РєР°СЂС‚РѕС‡РєРµ РїРѕ РіСЂСѓРїРїРµ "'||sGRCODE||'" СѓС‡РµСЂРµР¶РґРµРЅРёСЏ "'||sORGCODE||'", С‚.Рє. РїРѕ СЌС‚РѕР№ РіСЂСѓРїРїРµ СѓР¶Рµ СѓС‚РІРµСЂР¶РґС‘РЅ С‚Р°Р±РµР»СЊ.' );
+      'Невозможно исправить часы в расчётной карточке по группе "'||sGRCODE||'" учереждения "'||sORGCODE||'", т.к. по этой группе уже утверждён табель.' );
     p_exception(abs(F_PSTS_SAL_SHEET(:new.COMPANY, nPSORGGRP, dWORKDATE)-1),
-      'РќРµРІРѕР·РјРѕР¶РЅРѕ РёСЃРїСЂР°РІРёС‚СЊ С‡Р°СЃС‹ РІ СЂР°СЃС‡С‘С‚РЅРѕР№ РєР°СЂС‚РѕС‡РєРµ РїРѕ РіСЂСѓРїРїРµ "'||sGRCODE||'" СѓС‡РµСЂРµР¶РґРµРЅРёСЏ "'||sORGCODE||'", С‚.Рє. РїРѕ СЌС‚РѕР№ РіСЂСѓРїРїРµ СЃС„РѕСЂРјРёСЂРѕРІР°РЅР° РІРµРґРѕРјРѕСЃС‚СЊ.' );
+      'Невозможно исправить часы в расчётной карточке по группе "'||sGRCODE||'" учереждения "'||sORGCODE||'", т.к. по этой группе сформирована ведомость.' );
   end if;
 
-  /* РїСЂРё РёР·РјРµРЅРµРЅРёРё СЃРёРЅС…СЂРѕРЅРЅС‹С… Р°С‚СЂРёР±СѓС‚РѕРІ Р·Р°РіРѕР»РѕРІРєР° С‚СЂРёРіРіРµСЂ РЅРµ Р°РєС‚РёРІРёСЂРѕРІР°С‚СЊ */
+  /* при изменении синхронных атрибутов заголовка триггер не активировать */
   if (CMP_NUM(:old.CRN,:new.CRN) = 0) then
     return;
   end if;
 
-  /* СЂРµРіРёСЃС‚СЂР°С†РёСЏ СЃРѕР±С‹С‚РёСЏ */
+  /* регистрация события */
   if ( PKG_IUD.PROLOGUE('PSPAYCARDHOUR', 'U') ) then
     PKG_IUD.REG_RN('RN', :new.RN, :old.RN);
     PKG_IUD.REG_COMPANY('COMPANY', :new.COMPANY, :old.COMPANY);
@@ -120,12 +120,12 @@ declare
   sORGCODE                               PSORG.CODE%type;
   sGRCODE                                PSORGGRP.CODE%type;
 begin
-  /* РїСЂРѕРІРµСЂРєР° РЅРµРёР·РјРµРЅРЅРѕСЃС‚Рё Р·РЅР°С‡РµРЅРёР№ РїРѕР»РµР№ */
+  /* проверка неизменности значений полей */
   PKG_UNCHANGE.CHECK_NE('PSPAYCARDDAY', 'RN', :new.RN, :old.RN);
   PKG_UNCHANGE.CHECK_NE('PSPAYCARDDAY', 'COMPANY', :new.COMPANY, :old.COMPANY);
   PKG_UNCHANGE.CHECK_NE('PSPAYCARDDAY', 'PRN', :new.PRN, :old.PRN);
 
-  /* РїСЂРё РёР·РјРµРЅРµРЅРёРё СЃРёРЅС…СЂРѕРЅРЅС‹С… Р°С‚СЂРёР±СѓС‚РѕРІ Р·Р°РіРѕР»РѕРІРєР° С‚СЂРёРіРіРµСЂ РЅРµ Р°РєС‚РёРІРёСЂРѕРІР°С‚СЊ */
+  /* при изменении синхронных атрибутов заголовка триггер не активировать */
   if (CMP_NUM(:old.CRN,:new.CRN) = 0) then
     return;
   end if;
@@ -145,12 +145,12 @@ begin
        and C.PSORGGRP = OG.RN;
 
     p_exception(abs(F_PSTS_CONFIRMED(:new.COMPANY, nPSORGGRP, :new.WORKDATE)-1),
-      'РќРµРІРѕР·РјРѕР¶РЅРѕ РёСЃРїСЂР°РІРёС‚СЊ С‚РёРї РґРЅСЏ РІ СЂР°СЃС‡С‘С‚РЅРѕР№ РєР°СЂС‚РѕС‡РєРµ РїРѕ РіСЂСѓРїРїРµ "'||sGRCODE||'" СѓС‡РµСЂРµР¶РґРµРЅРёСЏ "'||sORGCODE||'", С‚.Рє. РїРѕ СЌС‚РѕР№ РіСЂСѓРїРїРµ СѓР¶Рµ СѓС‚РІРµСЂР¶РґС‘РЅ С‚Р°Р±РµР»СЊ.' );
+      'Невозможно исправить тип дня в расчётной карточке по группе "'||sGRCODE||'" учереждения "'||sORGCODE||'", т.к. по этой группе уже утверждён табель.' );
     p_exception(abs(F_PSTS_SAL_SHEET(:new.COMPANY, nPSORGGRP, :new.WORKDATE)-1),
-      'РќРµРІРѕР·РјРѕР¶РЅРѕ РёСЃРїСЂР°РІРёС‚СЊ С‚РёРї РґРЅСЏ РІ СЂР°СЃС‡С‘С‚РЅРѕР№ РєР°СЂС‚РѕС‡РєРµ РїРѕ РіСЂСѓРїРїРµ "'||sGRCODE||'" СѓС‡РµСЂРµР¶РґРµРЅРёСЏ "'||sORGCODE||'", С‚.Рє. РїРѕ СЌС‚РѕР№ РіСЂСѓРїРїРµ СЃС„РѕСЂРјРёСЂРѕРІР°РЅР° РІРµРґРѕРјРѕСЃС‚СЊ.' );
+      'Невозможно исправить тип дня в расчётной карточке по группе "'||sGRCODE||'" учереждения "'||sORGCODE||'", т.к. по этой группе сформирована ведомость.' );
   end if;
 
-  /* СЂРµРіРёСЃС‚СЂР°С†РёСЏ СЃРѕР±С‹С‚РёСЏ */
+  /* регистрация события */
   if ( PKG_IUD.PROLOGUE('PSPAYCARDDAY', 'U') ) then
     PKG_IUD.REG_RN('RN', :new.RN, :old.RN);
     PKG_IUD.REG_COMPANY('COMPANY', :new.COMPANY, :old.COMPANY);
@@ -166,24 +166,24 @@ show errors;
 
 create or replace view V_PSTSGRP
 (
-  nRN,                                  -- Р РµРіРёСЃС‚СЂР°С†РёРѕРЅРЅС‹Р№ РЅРѕРјРµСЂ
-  nCOMPANY,                             -- РћСЂРіР°РЅРёР·Р°С†РёСЏ
-  nCRN,                                 -- РљР°С‚Р°Р»РѕРі
-  nPRN,                                 -- Р РѕРґРёС‚РµР»СЊ
-  sORG_CODE,                            -- РњРЅРµРјРѕРєРѕРґ СѓС‡СЂРµР¶РґРµРЅРёСЏ
-  sORG_NAME,                            -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ СѓС‡СЂРµР¶РґРµРЅРёСЏ
-  sCODE,                                -- РњРЅРµРјРѕРєРѕРґ
-  sNAME,                                -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ
-  nGROUPKND,                            -- РљР°С‚РµРіРѕСЂРёСЏ РіСЂСѓРїРїС‹
-  sGROUPKND,                            -- РњРЅРµРјРѕРєРѕРґ РєР°С‚РµРіРѕСЂРёРё РіСЂСѓРїРїС‹
-  nSHEDULE,                             -- Р“СЂР°С„РёРє СЂР°Р±РѕС‚С‹
-  sSHEDULE,                             -- РњРЅРµРјРѕРєРѕРґ РіСЂР°С„РёРєР° СЂР°Р±РѕС‚С‹
-  nPRDFORM,                             -- Р¤РѕСЂРјР° РѕР±СѓС‡РµРЅРёСЏ
-  sPRDFORM,                             -- РњРЅРµРјРѕРєРѕРґ С„РѕСЂРјС‹ РѕР±СѓС‡РµРЅРёСЏ
-  dDATE_FROM,                           -- Р”РµР№СЃС‚РІСѓРµС‚ СЃ
-  dDATE_TO,                             -- Р”РµР№СЃС‚РІСѓРµС‚ РїРѕ
-  nTAB_CONF,                            -- РўР°Р±РµР»СЊ СѓС‚РІРµСЂР¶РґРµРЅ
-  nIS_SAL_SHEET                         -- Р’РµРґРѕРјРѕСЃС‚СЊ
+  nRN,                                  -- Регистрационный номер
+  nCOMPANY,                             -- Организация
+  nCRN,                                 -- Каталог
+  nPRN,                                 -- Родитель
+  sORG_CODE,                            -- Мнемокод учреждения
+  sORG_NAME,                            -- Наименование учреждения
+  sCODE,                                -- Мнемокод
+  sNAME,                                -- Наименование
+  nGROUPKND,                            -- Категория группы
+  sGROUPKND,                            -- Мнемокод категории группы
+  nSHEDULE,                             -- График работы
+  sSHEDULE,                             -- Мнемокод графика работы
+  nPRDFORM,                             -- Форма обучения
+  sPRDFORM,                             -- Мнемокод формы обучения
+  dDATE_FROM,                           -- Действует с
+  dDATE_TO,                             -- Действует по
+  nTAB_CONF,                            -- Табель утвержден
+  nIS_SAL_SHEET                         -- Ведомость
 )
 as
 select
@@ -220,7 +220,7 @@ where T.PRN = M.RN
 
 create or replace procedure P_PSTS_FOVDISTRIBH
 (
-  nCOMPANY                  in number,       -- РћСЂРіР°РЅРёР·Р°С†РёСЏ
+  nCOMPANY                  in number,       -- Организация
   nIDENT                    in number,
   dBGN                      in date,
   dEND                      in date,
@@ -254,15 +254,15 @@ begin
   )
   loop
     p_exception(abs(F_PSTS_CONFIRMED(nCOMPANY, rREC.DOCUMENT, dBGN)-1),
-      'РќРµРІРѕР·РјРѕР¶РЅРѕ СЂР°Р·РЅРµСЃС‚Рё С‡Р°СЃС‹ С‚Р°Р±РµР»СЏ РїРѕ РіСЂСѓРїРїРµ "'||rREC.GRCODE||'" СѓС‡РµСЂРµР¶РґРµРЅРёСЏ "'||rREC.GCODE||'", С‚.Рє. СЌС‚РѕС‚ С‚Р°Р±РµР»СЊ СѓР¶Рµ СѓС‚РІРµСЂР¶РґС‘РЅ.' );
+      'Невозможно разнести часы табеля по группе "'||rREC.GRCODE||'" учереждения "'||rREC.GCODE||'", т.к. этот табель уже утверждён.' );
     p_exception(abs(F_PSTS_SAL_SHEET(nCOMPANY, rREC.DOCUMENT, dBGN)-1),
-      'РќРµРІРѕР·РјРѕР¶РЅРѕ СЂР°Р·РЅРµСЃС‚Рё С‡Р°СЃС‹ С‚Р°Р±РµР»СЏ РїРѕ РіСЂСѓРїРїРµ "'||rREC.GRCODE||'" СѓС‡РµСЂРµР¶РґРµРЅРёСЏ "'||rREC.GCODE||'", С‚.Рє. СЌС‚РѕС‚ РїРѕ СЌС‚РѕРјСѓ С‚Р°Р±РµР»СЋ РµСЃС‚СЊ СЃС„РѕСЂРјРёСЂРѕРІР°РЅРЅР°СЏ РІРµРґРѕРјРѕСЃС‚СЊ.' );
-    /* С„РёРєСЃР°С†РёСЏ РЅР°С‡Р°Р»Р° РІС‹РїРѕР»РЅРµРЅРёСЏ РґРµР№СЃС‚РІРёСЏ */
+      'Невозможно разнести часы табеля по группе "'||rREC.GRCODE||'" учереждения "'||rREC.GCODE||'", т.к. этот по этому табелю есть сформированная ведомость.' );
+    /* фиксация начала выполнения действия */
     PKG_ENV.PROLOGUE( nCOMPANY, null, rREC.CRN, 'ParentPayCards', 'PSPAYCARD_FOVDISTRIBH', 'PSPAYCARD', rREC.RN );
 
     PKG_PSPAYCARDTIME.FOV_DISTRIBH( nCOMPANY, rREC.RN, dBGN, dEND, sHOURSTYPE, nOUTDAYOFF, nACCOUNT, nINSERT );
 
-    /* С„РёРєСЃР°С†РёСЏ РѕРєРѕРЅС‡Р°РЅРёСЏ РІС‹РїРѕР»РЅРµРЅРёСЏ РґРµР№СЃС‚РІРёСЏ */
+    /* фиксация окончания выполнения действия */
     PKG_ENV.EPILOGUE( nCOMPANY, null, rREC.CRN, 'ParentPayCards', 'PSPAYCARD_FOVDISTRIBH', 'PSPAYCARD', rREC.RN );
   end loop;
 end;
@@ -271,12 +271,12 @@ show errors;
 
 create or replace procedure P_PSTS_FOVDISTRIBD
 (
-  nCOMPANY      in number,      -- РћСЂРіР°РЅРёР·Р°С†РёСЏ
-  nIDENT        in number,      -- РРґРµРЅС‚РёС„РёРєР°С‚РѕСЂ РїРѕРјРµС‡РµРЅРЅС‹С… Р·Р°РїРёСЃРµР№
-  dBGN          in date,        -- РџРµСЂРёРѕРґ РЎ
-  dEND          in date,        -- РџРµСЂРёРѕРґ РџРѕ
-  sDAYTYPE      in varchar2,    -- РњРЅРµРјРѕРєРѕРґ С‚РёРїР° РґРЅСЏ
-  nOUTDAYOFF    in number       -- РСЃРєР»СЋС‡Р°С‚СЊ РЅРµСЂР°Р±РѕС‡РёРµ РґРЅРё РїРѕ РіСЂР°С„РёРєСѓ (0 - РќРµС‚, 1 - Р”Р°)
+  nCOMPANY      in number,      -- Организация
+  nIDENT        in number,      -- Идентификатор помеченных записей
+  dBGN          in date,        -- Период С
+  dEND          in date,        -- Период По
+  sDAYTYPE      in varchar2,    -- Мнемокод типа дня
+  nOUTDAYOFF    in number       -- Исключать нерабочие дни по графику (0 - Нет, 1 - Да)
 )
 as
 begin
@@ -303,15 +303,15 @@ begin
   )
   loop
     p_exception(abs(F_PSTS_CONFIRMED(nCOMPANY, rREC.DOCUMENT, dBGN)-1),
-      'РќРµРІРѕР·РјРѕР¶РЅРѕ СЂР°Р·РЅРµСЃС‚Рё РґРЅРё С‚Р°Р±РµР»СЏ РїРѕ РіСЂСѓРїРїРµ "'||rREC.GRCODE||'" СѓС‡РµСЂРµР¶РґРµРЅРёСЏ "'||rREC.GCODE||'", С‚.Рє. СЌС‚РѕС‚ С‚Р°Р±РµР»СЊ СѓР¶Рµ СѓС‚РІРµСЂР¶РґС‘РЅ.' );
+      'Невозможно разнести дни табеля по группе "'||rREC.GRCODE||'" учереждения "'||rREC.GCODE||'", т.к. этот табель уже утверждён.' );
     p_exception(abs(F_PSTS_SAL_SHEET(nCOMPANY, rREC.DOCUMENT, dBGN)-1),
-      'РќРµРІРѕР·РјРѕР¶РЅРѕ СЂР°Р·РЅРµСЃС‚Рё РґРЅРё С‚Р°Р±РµР»СЏ РїРѕ РіСЂСѓРїРїРµ "'||rREC.GRCODE||'" СѓС‡РµСЂРµР¶РґРµРЅРёСЏ "'||rREC.GCODE||'", С‚.Рє. СЌС‚РѕС‚ РїРѕ СЌС‚РѕРјСѓ С‚Р°Р±РµР»СЋ РµСЃС‚СЊ СЃС„РѕСЂРјРёСЂРѕРІР°РЅРЅР°СЏ РІРµРґРѕРјРѕСЃС‚СЊ.' );
-    /* С„РёРєСЃР°С†РёСЏ РЅР°С‡Р°Р»Р° РІС‹РїРѕР»РЅРµРЅРёСЏ РґРµР№СЃС‚РІРёСЏ */
+      'Невозможно разнести дни табеля по группе "'||rREC.GRCODE||'" учереждения "'||rREC.GCODE||'", т.к. этот по этому табелю есть сформированная ведомость.' );
+    /* фиксация начала выполнения действия */
     PKG_ENV.PROLOGUE( nCOMPANY, null, rREC.CRN, 'ParentPayCards', 'PSPAYCARD_FOVDISTRIBD', 'PSPAYCARD', rREC.RN );
 
     PKG_PSPAYCARDTIME.FOV_DISTRIBD( nCOMPANY, rREC.RN, dBGN, dEND, sDAYTYPE, nOUTDAYOFF );
 
-    /* С„РёРєСЃР°С†РёСЏ РѕРєРѕРЅС‡Р°РЅРёСЏ РІС‹РїРѕР»РЅРµРЅРёСЏ РґРµР№СЃС‚РІРёСЏ */
+    /* фиксация окончания выполнения действия */
     PKG_ENV.EPILOGUE( nCOMPANY, null, rREC.CRN, 'ParentPayCards', 'PSPAYCARD_FOVDISTRIBD', 'PSPAYCARD', rREC.RN );
   end loop;
 end;
@@ -320,7 +320,7 @@ show errors;
 
 create or replace procedure P_PSTS_FOVCREATE
 (
-  nCOMPANY                  in number,       -- РћСЂРіР°РЅРёР·Р°С†РёСЏ
+  nCOMPANY                  in number,       -- Организация
   nIDENT                    in number,
   nCALCYEAR                 in number,
   nCALCMONTH                in number
@@ -355,15 +355,15 @@ begin
   )
   loop
     p_exception(abs(F_PSTS_CONFIRMED(nCOMPANY, rREC.DOCUMENT, dBGN)-1),
-      'РќРµРІРѕР·РјРѕР¶РЅРѕ СЃС„РѕСЂРјРёСЂРѕРІР°С‚СЊ С‚Р°Р±РµР»СЊ РїРѕ РєР°Р»РµРЅРґР°СЂСЋ РїРѕ РіСЂСѓРїРїРµ "'||rREC.GRCODE||'" СѓС‡РµСЂРµР¶РґРµРЅРёСЏ "'||rREC.GCODE||'", С‚.Рє. СЌС‚РѕС‚ С‚Р°Р±РµР»СЊ СѓР¶Рµ СѓС‚РІРµСЂР¶РґС‘РЅ.' );
+      'Невозможно сформировать табель по календарю по группе "'||rREC.GRCODE||'" учереждения "'||rREC.GCODE||'", т.к. этот табель уже утверждён.' );
     p_exception(abs(F_PSTS_SAL_SHEET(nCOMPANY, rREC.DOCUMENT, dBGN)-1),
-      'РќРµРІРѕР·РјРѕР¶РЅРѕ СЃС„РѕСЂРјРёСЂРѕРІР°С‚СЊ С‚Р°Р±РµР»СЊ РїРѕ РєР°Р»РµРЅРґР°СЂСЋ РїРѕ РіСЂСѓРїРїРµ "'||rREC.GRCODE||'" СѓС‡РµСЂРµР¶РґРµРЅРёСЏ "'||rREC.GCODE||'", С‚.Рє. СЌС‚РѕС‚ РїРѕ СЌС‚РѕРјСѓ С‚Р°Р±РµР»СЋ РµСЃС‚СЊ СЃС„РѕСЂРјРёСЂРѕРІР°РЅРЅР°СЏ РІРµРґРѕРјРѕСЃС‚СЊ.' );
-    /* С„РёРєСЃР°С†РёСЏ РЅР°С‡Р°Р»Р° РІС‹РїРѕР»РЅРµРЅРёСЏ РґРµР№СЃС‚РІРёСЏ */
+      'Невозможно сформировать табель по календарю по группе "'||rREC.GRCODE||'" учереждения "'||rREC.GCODE||'", т.к. этот по этому табелю есть сформированная ведомость.' );
+    /* фиксация начала выполнения действия */
     PKG_ENV.PROLOGUE( nCOMPANY, null, rREC.CRN, 'ParentPayCards', 'PSPAYCARD_FOVCREATE', 'PSPAYCARD', rREC.RN );
 
     PKG_PSPAYCARDTIME.FOV_CREATE( nCOMPANY, rREC.RN, dBGN, dEND );
 
-    /* С„РёРєСЃР°С†РёСЏ РѕРєРѕРЅС‡Р°РЅРёСЏ РІС‹РїРѕР»РЅРµРЅРёСЏ РґРµР№СЃС‚РІРёСЏ */
+    /* фиксация окончания выполнения действия */
     PKG_ENV.EPILOGUE( nCOMPANY, null, rREC.CRN, 'ParentPayCards', 'PSPAYCARD_FOVCREATE', 'PSPAYCARD', rREC.RN );
   end loop;
 end;
@@ -373,8 +373,8 @@ show errors;
 create or replace procedure P_PSPAYCARD_PSTS_UNCONFIRM
 (
   nCOMPANY                  in number,
-  nIDENT                    in number,       -- РїРѕРјРµС‡РµРЅРЅС‹Рµ Р·Р°РїРёСЃРё
-  nUNCONFIRMED             out number        -- Р·Р°РїРёСЃРµР№ СѓС‚РІРµСЂР¶РґРµРЅРѕ
+  nIDENT                    in number,       -- помеченные записи
+  nUNCONFIRMED             out number        -- записей утверждено
 )
 as
   dCALCPER                     date          :=GET_OPTIONS_DATE('ParentPayCards_CalcPeriod', nCOMPANY);
@@ -383,7 +383,7 @@ as
   nOLD_C_RN                    number        :=null;
 begin
   nUNCONFIRMED:= 0;
-  -- С†РёРєР» РїРѕ РіСЂСѓРїРїР°Рј
+  -- цикл по группам
   for rRECC in
   (
      select SL.DOCUMENT,
@@ -398,10 +398,10 @@ begin
   )
   loop
     p_exception(F_PSTS_CONFIRMED(nCOMPANY, rRECC.DOCUMENT, dCALCPER),
-      'РќРµРІРѕР·РјРѕР¶РЅРѕ СЃРЅСЏС‚СЊ СѓС‚РІРµСЂР¶РґРµРЅРёРµ СЃ С‚Р°Р±РµР»СЏ РїРѕ РіСЂСѓРїРїРµ "'||rRECC.GRCODE||'" СѓС‡РµСЂРµР¶РґРµРЅРёСЏ "'||rRECC.GCODE||'", С‚.Рє. СЌС‚РѕС‚ С‚Р°Р±РµР»СЊ РµС‰Рµ РЅРµ СѓС‚РІРµСЂР¶РґС‘РЅ.' );
+      'Невозможно снять утверждение с табеля по группе "'||rRECC.GRCODE||'" учереждения "'||rRECC.GCODE||'", т.к. этот табель еще не утверждён.' );
     p_exception(abs(F_PSTS_SAL_SHEET(nCOMPANY, rRECC.DOCUMENT, dCALCPER)-1),
-      'РќРµРІРѕР·РјРѕР¶РЅРѕ СЃРЅСЏС‚СЊ СѓС‚РІРµСЂР¶РґРµРЅРёРµ СЃ С‚Р°Р±РµР»СЏ РїРѕ РіСЂСѓРїРїРµ "'||rRECC.GRCODE||'" СѓС‡РµСЂРµР¶РґРµРЅРёСЏ "'||rRECC.GCODE||'", С‚.Рє. СЌС‚РѕС‚ РїРѕ СЌС‚РѕРјСѓ С‚Р°Р±РµР»СЋ РµСЃС‚СЊ СЃС„РѕСЂРјРёСЂРѕРІР°РЅРЅР°СЏ РІРµРґРѕРјРѕСЃС‚СЊ.' );
-    -- С†РёРєР» РїРѕ Р Рљ
+      'Невозможно снять утверждение с табеля по группе "'||rRECC.GRCODE||'" учереждения "'||rRECC.GCODE||'", т.к. этот по этому табелю есть сформированная ведомость.' );
+    -- цикл по РК
     for rREC in
     (
        select C.RN           C_RN,
@@ -421,10 +421,10 @@ begin
     loop
       if CMP_NUM(rREC.C_RN, nOLD_C_RN)=0 then
         if nOLD_C_RN is not null then
-          -- С„РёРєСЃР°С†РёСЏ РѕРєРѕРЅС‡Р°РЅРёСЏ РІС‹РїРѕР»РЅРµРЅРёСЏ РґРµР№СЃС‚РІРёСЏ
+          -- фиксация окончания выполнения действия
           PKG_ENV.EPILOGUE( nCOMPANY, null, nOLD_CRN, 'ParentPayCards', 'PSPAYCARD_PSTS_UNCONFIRM', 'PSPAYCARD', nOLD_C_RN );
         end if;
-        -- С„РёРєСЃР°С†РёСЏ РЅР°С‡Р°Р»Р° РІС‹РїРѕР»РЅРµРЅРёСЏ РґРµР№СЃС‚РІРёСЏ
+        -- фиксация начала выполнения действия
         PKG_ENV.PROLOGUE( nCOMPANY, null, rREC.CRN, 'ParentPayCards', 'PSPAYCARD_PSTS_UNCONFIRM', 'PSPAYCARD', rREC.C_RN );
       end if;
 
@@ -437,7 +437,7 @@ begin
       nOLD_C_RN:=  rREC.C_RN;
     end loop;
     if nOLD_C_RN is not null then
-      -- С„РёРєСЃР°С†РёСЏ РѕРєРѕРЅС‡Р°РЅРёСЏ РІС‹РїРѕР»РЅРµРЅРёСЏ РґРµР№СЃС‚РІРёСЏ
+      -- фиксация окончания выполнения действия
       PKG_ENV.EPILOGUE( nCOMPANY, null, nOLD_CRN, 'ParentPayCards', 'PSPAYCARD_PSTS_UNCONFIRM', 'PSPAYCARD', nOLD_C_RN );
     end if;
   end loop;
@@ -448,8 +448,8 @@ show errors;
 create or replace procedure P_PSPAYCARD_PSTS_CONFIRM
 (
   nCOMPANY                  in number,
-  nIDENT                    in number,      -- РїРѕРјРµС‡РµРЅРЅС‹Рµ Р·Р°РїРёСЃРё
-  nCONFIRMED               out number       -- Р·Р°РїРёСЃРµР№ СѓС‚РІРµСЂР¶РґРµРЅРѕ
+  nIDENT                    in number,      -- помеченные записи
+  nCONFIRMED               out number       -- записей утверждено
 )
 as
   dCALCPER                     date         := GET_OPTIONS_DATE('ParentPayCards_CalcPeriod', nCOMPANY);
@@ -457,7 +457,7 @@ as
   nOLD_C_RN                    number       :=null;
 begin
   nCONFIRMED:= 0;
-  -- С†РёРєР» РїРѕ РіСЂСѓРїРїР°Рј
+  -- цикл по группам
   for rRECC in
   (
      select SL.DOCUMENT,
@@ -472,8 +472,8 @@ begin
   )
   loop
     p_exception(abs(F_PSTS_CONFIRMED(nCOMPANY, rRECC.DOCUMENT, dCALCPER)-1),
-      'РќРµРІРѕР·РјРѕР¶РЅРѕ СѓС‚РІРµСЂРґРёС‚СЊ С‚Р°Р±РµР»СЊ РїРѕ РіСЂСѓРїРїРµ "'||rRECC.GRCODE||'" СѓС‡РµСЂРµР¶РґРµРЅРёСЏ "'||rRECC.GCODE||'", С‚.Рє. СЌС‚РѕС‚ С‚Р°Р±РµР»СЊ СѓР¶Рµ СѓС‚РІРµСЂР¶РґС‘РЅ.' );
-    -- С†РёРєР» РїРѕ Р Рљ
+      'Невозможно утвердить табель по группе "'||rRECC.GRCODE||'" учереждения "'||rRECC.GCODE||'", т.к. этот табель уже утверждён.' );
+    -- цикл по РК
     for rREC in
     (
        select C.RN    C_RN,
@@ -492,10 +492,10 @@ begin
     loop
       if CMP_NUM(rREC.C_RN, nOLD_C_RN)=0 then
         if nOLD_C_RN is not null then
-          -- С„РёРєСЃР°С†РёСЏ РѕРєРѕРЅС‡Р°РЅРёСЏ РІС‹РїРѕР»РЅРµРЅРёСЏ РґРµР№СЃС‚РІРёСЏ
+          -- фиксация окончания выполнения действия
           PKG_ENV.EPILOGUE( nCOMPANY, null, nOLD_CRN, 'ParentPayCards', 'PSPAYCARD_PSTS_CONFIRM', 'PSPAYCARD', nOLD_C_RN );
         end if;
-        -- С„РёРєСЃР°С†РёСЏ РЅР°С‡Р°Р»Р° РІС‹РїРѕР»РЅРµРЅРёСЏ РґРµР№СЃС‚РІРёСЏ
+        -- фиксация начала выполнения действия
         PKG_ENV.PROLOGUE( nCOMPANY, null, rREC.CRN, 'ParentPayCards', 'PSPAYCARD_PSTS_CONFIRM', 'PSPAYCARD', rREC.C_RN );
       end if;
 
@@ -512,7 +512,7 @@ begin
       nOLD_C_RN:=  rREC.C_RN;
     end loop;
     if nOLD_C_RN is not null then
-      -- С„РёРєСЃР°С†РёСЏ РѕРєРѕРЅС‡Р°РЅРёСЏ РІС‹РїРѕР»РЅРµРЅРёСЏ РґРµР№СЃС‚РІРёСЏ
+      -- фиксация окончания выполнения действия
       PKG_ENV.EPILOGUE( nCOMPANY, null, nOLD_CRN, 'ParentPayCards', 'PSPAYCARD_PSTS_CONFIRM', 'PSPAYCARD', nOLD_C_RN );
     end if;
   end loop;
@@ -528,7 +528,7 @@ declare
   sGRCODE         PSORGGRP.CODE%type;
   dWORKDATE       date;
 begin
-  /* СЃС‡РёС‚С‹РІР°РЅРёРµ РїР°СЂР°РјРµС‚СЂРѕРІ Р·Р°РїРёСЃРё master-С‚Р°Р±Р»РёС†С‹ */
+  /* считывание параметров записи master-таблицы */
   select CD.COMPANY,
          CD.CRN,
          C.PSORGGRP,
@@ -552,12 +552,12 @@ begin
 
   if :new.WORKEDHOURS!= 0 then
     P_EXCEPTION(abs(F_PSTS_CONFIRMED(:new.COMPANY, nPSORGGRP, dWORKDATE)-1),
-      'РќРµРІРѕР·РјРѕР¶РЅРѕ РґРѕР±Р°РІРёС‚СЊ С‡Р°СЃС‹ РІ СЂР°СЃС‡С‘С‚РЅСѓСЋ РєР°СЂС‚РѕС‡РєСѓ РїРѕ РіСЂСѓРїРїРµ "'||sGRCODE||'" СѓС‡РµСЂРµР¶РґРµРЅРёСЏ "'||sORGCODE||'", С‚.Рє. РїРѕ СЌС‚РѕР№ РіСЂСѓРїРїРµ СѓР¶Рµ СѓС‚РІРµСЂР¶РґС‘РЅ С‚Р°Р±РµР»СЊ.' );
+      'Невозможно добавить часы в расчётную карточку по группе "'||sGRCODE||'" учереждения "'||sORGCODE||'", т.к. по этой группе уже утверждён табель.' );
     P_EXCEPTION(abs(F_PSTS_SAL_SHEET(:new.COMPANY, nPSORGGRP, dWORKDATE)-1),
-      'РќРµРІРѕР·РјРѕР¶РЅРѕ РґРѕР±Р°РІРёС‚СЊ С‡Р°СЃС‹ РІ СЂР°СЃС‡С‘С‚РЅСѓСЋ РєР°СЂС‚РѕС‡РєСѓ РїРѕ РіСЂСѓРїРїРµ "'||sGRCODE||'" СѓС‡РµСЂРµР¶РґРµРЅРёСЏ "'||sORGCODE||'", С‚.Рє. РїРѕ СЌС‚РѕР№ РіСЂСѓРїРїРµ СЃС„РѕСЂРјРёСЂРѕРІР°РЅР° РІРµРґРѕРјРѕСЃС‚СЊ.' );
+      'Невозможно добавить часы в расчётную карточку по группе "'||sGRCODE||'" учереждения "'||sORGCODE||'", т.к. по этой группе сформирована ведомость.' );
   end if;
 
-  /* СЂРµРіРёСЃС‚СЂР°С†РёСЏ СЃРѕР±С‹С‚РёСЏ */
+  /* регистрация события */
   if ( PKG_IUD.PROLOGUE('PSPAYCARDHOUR', 'I') ) then
     PKG_IUD.REG_RN('RN', :new.RN);
     PKG_IUD.REG_COMPANY('COMPANY', :new.COMPANY);
@@ -573,8 +573,8 @@ show errors;
 
 create or replace function F_PAN_PSORGGRP_CHECK_CLOSE
 (
-  nRN             in number,            -- RN РіСЂСѓРїРїС‹ СѓС‡СЂРµР¶РґРµРЅРёСЏ
-  dWORKDATE       in date               -- Р”Р°С‚Р° С‚Р°Р±РµР»СЏ
+  nRN             in number,            -- RN группы учреждения
+  dWORKDATE       in date               -- Дата табеля
 )
 return number
 as
@@ -582,7 +582,7 @@ as
   nRESULT         number(1);
 
 begin
-  -- РїРѕРёСЃРє Р·Р°РєСЂС‹С‚РѕРіРѕ РїРµСЂРёРѕРґР° РіСЂСѓРїРїС‹
+  -- поиск закрытого периода группы
   begin
     select P.PERIOD
       into dCURRENT_PERIOD
@@ -603,8 +603,8 @@ show errors;
 
 create or replace procedure P_PAN_PSTSBRD_CHECK
 (
-  nPSPAYCARD      in number,            -- RN СЂР°СЃС‡С‘С‚РЅРѕР№ РєР°СЂС‚РѕС‡РєРё
-  dWORKDATE       in date               -- Р”Р°С‚Р° РїРµСЂРёРѕРґР°
+  nPSPAYCARD      in number,            -- RN расчётной карточки
+  dWORKDATE       in date               -- Дата периода
 )
 as
   nPSORGGRP       PKG_STD.tREF;
@@ -612,7 +612,7 @@ as
   sORG            PKG_STD.tSTRING;
 
 begin
-  -- СЃС‡РёС‚С‹РІР°РЅРёРµ РѕСЂРіР°РЅРёР·Р°С†РёРё Рё РіСЂСѓРїРїС‹ СЂР°СЃС‡С‘С‚РЅРѕР№ РєР°СЂС‚РѕС‡РєРё
+  -- считывание организации и группы расчётной карточки
   begin
     select PC.PSORGGRP,
            G.CODE,
@@ -631,9 +631,9 @@ begin
       PKG_MSG.RECORD_NOT_FOUND(nPSPAYCARD, 'ParentPayCards');
   end;
 
-  -- РїСЂРѕРІРµСЂРєР° Р·Р°РєСЂС‹С‚РёСЏ С‚РµРєСѓС‰РµРіРѕ СЂР°СЃС‡С‘С‚РЅРѕРіРѕ РїРµСЂРёРѕРґР°
+  -- проверка закрытия текущего расчётного периода
   if F_PAN_PSORGGRP_CHECK_CLOSE(nPSORGGRP, dWORKDATE) = 1 then
-    P_EXCEPTION(0, 'РўР°Р±РµР»СЊ РіСЂСѓРїРїС‹ "%s" СѓС‡СЂРµР¶РґРµРЅРёСЏ "%s" Р·Р°РєСЂС‹С‚ РґР»СЏ РёСЃРїСЂР°РІР»РµРЅРёСЏ РІ РїРµСЂРёРѕРґРµ %s. Р”Р»СЏ РёСЃРїСЂР°РІР»РµРЅРёСЏ С‚СЂРµР±СѓРµС‚СЃСЏ РѕС‚РєСЂС‹С‚СЊ С‚Р°Р±РµР»СЊ.',
+    P_EXCEPTION(0, 'Табель группы "%s" учреждения "%s" закрыт для исправления в периоде %s. Для исправления требуется открыть табель.',
       sGROUP, sORG, to_char(dWORKDATE, 'mm/yyyy'));
   end if;
 end;
@@ -697,11 +697,11 @@ end;
 show errors;
 
 create or replace procedure UDO_P_TIMESHEET_RECEIVE
--- РџРѕР»СѓС‡РµРЅРёРµ С‚Р°Р±РµР»СЏ РїРѕСЃРµС‰Р°РµРјРѕСЃС‚Рё РёР· CSV С„Р°Р№Р»Р°
+-- Получение табеля посещаемости из CSV файла
 (
-  nCOMPANY        in number,            -- РћСЂРіР°РЅРёР·Р°С†РёСЏ
-  cDATA           in clob,              -- РўР°Р±РµР»СЊ РїРѕСЃРµС‰Р°РµРјРѕСЃС‚Рё РіСЂСѓРїРїС‹ РІ С„РѕСЂРјР°С‚Рµ CSV
-  sMESSAGE        out varchar2          -- Р РµР·СѓР»СЊС‚Р°С‚
+  nCOMPANY        in number,            -- Организация
+  cDATA           in clob,              -- Табель посещаемости группы в формате CSV
+  sMESSAGE        out varchar2          -- Результат
 )
 as
   sLINE           varchar2(32767);
@@ -749,7 +749,7 @@ as
   nTMP            pls_integer;
   nSCHEDULE_HOURS PKG_STD.tSUMM;
 
-  -- РћР±СЂР°Р±РѕС‚РєР° СЃС‚СЂРѕРєРё С„Р°Р№Р»Р°
+  -- Обработка строки файла
   procedure PERFORM_LINE
   (
     nLINE_NUMBER  in number,
@@ -760,13 +760,13 @@ as
     sDAY_VALUE    PKG_STD.tSTRING;
     nDAYSTYPE     PKG_STD.tREF;
   begin
-    -- РЈРґР°Р»РµРЅРёРµ Р»РёС€РЅРёС… ";" РІ РєРѕРЅС†Рµ СЃС‚СЂРѕРєРё
+    -- Удаление лишних ";" в конце строки
     while substr(sLINE, -1) = ';' loop
       sLINE          := substr(sLINE, 1, length(sLINE) - 1);
     end loop;
     sLINE := sLINE||';';
 
-    -- РўРµРєСѓС‰РёР№ РїРµСЂРёРѕРґ
+    -- Текущий период
     if nLINE_NUMBER = 1 then
       sPERION        := UDO_F_GET_LIST_ITEM(sLINE, 1, ';');
       dPERIOD        := UDO_F_S2D(sPERION);
@@ -775,7 +775,7 @@ as
       nMONTH         := extract(month from dPERIOD);
       nYEAR          := extract(year from dPERIOD);
 
-    -- РћСЂРіР°РЅРёР·Р°С†РёСЏ
+    -- Организация
     elsif nLINE_NUMBER = 2 then
       sORG_CODE := UDO_F_GET_LIST_ITEM(sLINE, 1, ';');
       sORG_INN := UDO_F_GET_LIST_ITEM(sLINE, 2, ';');
@@ -788,10 +788,10 @@ as
            and O.CODE = sORG_CODE;
       exception
         when NO_DATA_FOUND then
-          P_EXCEPTION(0, 'РћСЂРіР°РЅРёР·Р°С†РёСЏ "%s" РЅРµ РЅР°Р№РґРµРЅР°', sORG_CODE);
+          P_EXCEPTION(0, 'Организация "%s" не найдена', sORG_CODE);
       end;
 
-    -- Р“СЂСѓРїРїР°
+    -- Группа
     elsif nLINE_NUMBER = 3 then
       sGROUP_CODE := UDO_F_GET_LIST_ITEM(sLINE, 1, ';');
 
@@ -803,10 +803,10 @@ as
            and G.CODE = sGROUP_CODE;
       exception
         when NO_DATA_FOUND then
-          P_EXCEPTION(0, 'Р“СЂСѓРїРїР° "%s" РІ РѕСЂРіР°РЅРёР·Р°С†РёРё "%s" РЅРµ РЅР°Р№РґРµРЅР°', sGROUP_CODE, sORG_CODE);
+          P_EXCEPTION(0, 'Группа "%s" в организации "%s" не найдена', sGROUP_CODE, sORG_CODE);
       end;
 
-    -- РџРѕСЃРµС‰Р°РµРјРѕСЃС‚СЊ РїРµСЂСЃРѕРЅС‹ РІ РіСЂСѓРїРїРµ
+    -- Посещаемость персоны в группе
     elsif nLINE_NUMBER > 4 and trim(sLINE) is not null then
       sAGNFAMILYNAME := UDO_F_GET_LIST_ITEM(sLINE, 1, ';');
       sAGNFIRSTNAME  := UDO_F_GET_LIST_ITEM(sLINE, 2, ';');
@@ -817,7 +817,7 @@ as
       dDATE_FROM     := UDO_F_S2D(UDO_F_GET_LIST_ITEM(sLINE, 7, ';'));
       dDATE_TO       := UDO_F_S2D(UDO_F_GET_LIST_ITEM(sLINE, 8, ';'));
 
-      -- РџРѕРёСЃРє СЂР°СЃС‡С‘С‚РЅРѕР№ РєР°СЂС‚РѕС‡РєРё
+      -- Поиск расчётной карточки
       begin
         select PC.RN
           into nPAYCARD_RN
@@ -851,24 +851,24 @@ as
           exception
             when NO_DATA_FOUND then
               nERROR_COUNT := nERROR_COUNT + 1;
-              sERROR := substr(sERROR||FORMAT_TEXT('%s. %s %s РЅРµ РЅР°Р№РґРµРЅ(Р°)'||chr(10),
+              sERROR := substr(sERROR||FORMAT_TEXT('%s. %s %s не найден(а)'||chr(10),
                 to_char(nERROR_COUNT), sAGNFAMILYNAME, sAGNFIRSTNAME), 1, 4000);
               return;
           end;
       end;
 
-      -- РџСЂРѕРІРµСЂРєР° Р·Р°РєСЂС‹С‚РёСЏ РїРµСЂРёРѕРґР° РІ РіСЂСѓРїРїРµ
+      -- Проверка закрытия периода в группе
       P_PAN_PSTSBRD_CHECK(nPAYCARD_RN, dPERIOD_BEGIN);
-      -- РџСЂРѕРІРµСЂРєР° СѓС‚РІРµСЂР¶РґРµРЅРёСЏ С‚Р°Р±РµР»СЏ
+      -- Проверка утверждения табеля
       P_EXCEPTION(abs(F_PSTS_CONFIRMED(nCOMPANY, nGROUP_RN, dDATE)-1),
-        'РќРµРІРѕР·РјРѕР¶РЅРѕ РёСЃРїСЂР°РІРёС‚СЊ С‚РёРї РґРЅСЏ РІ СЂР°СЃС‡С‘С‚РЅРѕР№ РєР°СЂС‚РѕС‡РєРµ РїРѕ РіСЂСѓРїРїРµ "%s" СѓС‡РµСЂРµР¶РґРµРЅРёСЏ "%s", С‚.Рє. РїРѕ СЌС‚РѕР№ РіСЂСѓРїРїРµ СѓР¶Рµ СѓС‚РІРµСЂР¶РґС‘РЅ С‚Р°Р±РµР»СЊ.',
+        'Невозможно исправить тип дня в расчётной карточке по группе "%s" учереждения "%s", т.к. по этой группе уже утверждён табель.',
         sGROUP_CODE, sORG_CODE);
-      -- РџСЂРѕРІРµСЂРєР° РЅР°Р»РёС‡РёСЏ РІРµРґРѕРјРѕСЃС‚Рё
+      -- Проверка наличия ведомости
       P_EXCEPTION(abs(F_PSTS_SAL_SHEET(nCOMPANY, nGROUP_RN, dDATE)-1),
-        'РќРµРІРѕР·РјРѕР¶РЅРѕ РёСЃРїСЂР°РІРёС‚СЊ С‚РёРї РґРЅСЏ РІ СЂР°СЃС‡С‘С‚РЅРѕР№ РєР°СЂС‚РѕС‡РєРµ РїРѕ РіСЂСѓРїРїРµ "%s" СѓС‡РµСЂРµР¶РґРµРЅРёСЏ "%s", С‚.Рє. РїРѕ СЌС‚РѕР№ РіСЂСѓРїРїРµ СЃС„РѕСЂРјРёСЂРѕРІР°РЅР° РІРµРґРѕРјРѕСЃС‚СЊ.',
+        'Невозможно исправить тип дня в расчётной карточке по группе "%s" учереждения "%s", т.к. по этой группе сформирована ведомость.',
         sGROUP_CODE, sORG_CODE);
 
-      -- РџСЂРѕРІРµСЂРєР° РґРЅРµР№ РІРЅРµ РіСЂР°С„РёРєР°: СЂР°Р±РѕС‡РёР№ РєР°Р»РµРЅРґР°СЂСЊ РїРѕ РіСЂР°С„РёРєСѓ СЂР°Р±РѕС‚ РІ С‚РµРєСѓС‰РµРј РїРµСЂРёРѕРґРµ
+      -- Проверка дней вне графика: рабочий календарь по графику работ в текущем периоде
       begin
         select EP.RN,
                (
@@ -886,7 +886,7 @@ as
            and dPERIOD between EP.STARTDATE and EP.ENDDATE
            and EP.SCHEDULE = PC.SLSCHEDULE;
 
-        -- РџСЂРѕРІРµСЂСЏРµРј С‚РѕР»СЊРєРѕ РґР»СЏ РіСЂР°С„РёРєР° СЃ СЃСѓРјРјРѕР№ С‡Р°СЃРѕРІ 60 = 5 РґРЅРµР№ * 12 С‡Р°СЃРѕРІ
+        -- Проверяем только для графика с суммой часов 60 = 5 дней * 12 часов
         if nSCHEDULE_HOURS != 60 then
           nENPERIOD := null;
         end if;
@@ -895,28 +895,28 @@ as
           nENPERIOD := null;
       end;
 
-      -- РџРѕСЃРµС‰Р°РµРјРѕСЃС‚СЊ РїРѕ РґРЅСЏРј
+      -- Посещаемость по дням
       for d in 1 .. nDAYS_IN_MONTH loop
         dDATE := int2date(d, nMONTH, nYEAR);
         sDAY_VALUE := UDO_F_GET_LIST_ITEM(sLINE, 8 + d, ';');
 
-        -- РќРµСЏРІРєР° РїРѕ Р±РѕР»РµР·РЅРё Р‘
-        if sDAY_VALUE = 'Р‘' then
+        -- Неявка по болезни Б
+        if sDAY_VALUE = 'Б' then
           nHOURS_FACT := 0;
           nDAYSTYPE := nDAYSTYPE_B;
-        -- РћС‚РїСѓСЃРє Рћ
-        elsif sDAY_VALUE = 'Рћ' then
+        -- Отпуск О
+        elsif sDAY_VALUE = 'О' then
           nHOURS_FACT := 0;
           nDAYSTYPE := nDAYSTYPE_O;
-        -- РќРµСЏРІРєР° РїРѕ СѓРІР°Р¶РёС‚РµР»СЊРЅРѕР№ РїСЂРёС‡РёРЅРµ РќРЈ
-        elsif sDAY_VALUE = 'РќРЈ' then
+        -- Неявка по уважительной причине НУ
+        elsif sDAY_VALUE = 'НУ' then
           nHOURS_FACT := 0;
           nDAYSTYPE := nDAYSTYPE_NU;
-        -- РќРµСЏРІРєР° РїРѕ РЅРµСѓРІР°Р¶РёС‚РµР»СЊРЅРѕР№ РїСЂРёС‡РёРЅРµ РќРЇ
-        elsif instr(sDAY_VALUE, 'РќРЇ') > 0 then
+        -- Неявка по неуважительной причине НЯ
+        elsif instr(sDAY_VALUE, 'НЯ') > 0 then
           nHOURS_FACT := nvl(UDO_F_S2N(F_PAN_DROP_LITERS(sDAY_VALUE)), 0);
           nDAYSTYPE := nDAYSTYPE_N;
-        -- РЇРІРєР°
+        -- Явка
         else
           nHOURS_FACT := nvl(UDO_F_S2N(sDAY_VALUE), 0);
           nDAYSTYPE := null;
@@ -925,7 +925,7 @@ as
         if nHOURS_FACT > 0 or nDAYSTYPE is not null then
           nPAYCARDDAY := PKG_PSPAYCARDTIME.CREATE_DAY(nCOMPANY, nPAYCARD_RN, dDATE, nDAYSTYPE, 1);
 
-          -- РџСЂРѕРІРµСЂРєР° РґРЅСЏ С‚Р°Р±РµР»СЏ РїРѕ СЂР°Р±РѕС‡РµРјСѓ РєР°Р»РµРЅРґР°СЂСЋ
+          -- Проверка дня табеля по рабочему календарю
           if nENPERIOD is not null then
             begin
               select 1
@@ -943,7 +943,7 @@ as
             exception
               when NO_DATA_FOUND then
                 nERROR_COUNT := nERROR_COUNT + 1;
-                sERROR := substr(sERROR||FORMAT_TEXT('%s. %s %s РґР°С‚Р° %s РІРЅРµ РіСЂР°С„РёРєР°.'||chr(10),
+                sERROR := substr(sERROR||FORMAT_TEXT('%s. %s %s дата %s вне графика.'||chr(10),
                   to_char(nERROR_COUNT), sAGNFAMILYNAME, sAGNFIRSTNAME, to_char(dDATE, 'dd.mm.yyyy')), 1, 4000);
                 continue;
             end;
@@ -969,15 +969,15 @@ as
               begin
                 P_PSPAYCARDHOUR_BASE_INSERT
                 (
-                  nCOMPANY     => nCOMPANY,     -- РћСЂРіР°РЅРёР·Р°С†РёСЏ
-                  nPRN         => nPAYCARDDAY,  -- RN РґРЅСЏ
-                  nHOURSTYPE   => nHOURSTYPE,   -- РўРёРї С‡Р°СЃР°
-                  nWORKEDHOURS => nHOURS_FACT,  -- РљРѕР»РёС‡РµСЃС‚РІРѕ С‡Р°СЃРѕРІ
-                  nRN          => nPAYCARDHOUR  -- RN С‡Р°СЃР°
+                  nCOMPANY     => nCOMPANY,     -- Организация
+                  nPRN         => nPAYCARDDAY,  -- RN дня
+                  nHOURSTYPE   => nHOURSTYPE,   -- Тип часа
+                  nWORKEDHOURS => nHOURS_FACT,  -- Количество часов
+                  nRN          => nPAYCARDHOUR  -- RN часа
                 );
               exception
                 when OTHERS then
-                  P_EXCEPTION(0, 'РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё С‚Р°Р±РµР»СЏ РІ РџР°СЂСѓСЃ: '||ERROR_TEXT);
+                  P_EXCEPTION(0, 'Ошибка загрузки табеля в Парус: '||ERROR_TEXT);
               end;
           end;
         else
@@ -993,7 +993,7 @@ as
 
 begin
   begin
-    -- РўРёРї С‡Р°СЃР°
+    -- Тип часа
     begin
       select T.RN,
              T.CODE
@@ -1001,17 +1001,17 @@ begin
              sHOURSTYPE
         from SL_HOURS_TYPES T
        where T.BASE_SIGN = 1
-         and substr(upper(T.SHORT_CODE), 1, 1) = 'Р”';
+         and substr(upper(T.SHORT_CODE), 1, 1) = 'Д';
     exception
       when NO_DATA_FOUND then
-        P_EXCEPTION(0, 'РћСЃРЅРѕРІРЅРѕР№ С‚РёРї С‡Р°СЃР° СЃ РєРѕРґРѕРј Р” РЅРµ РЅР°Р№РґРµРЅ');
+        P_EXCEPTION(0, 'Основной тип часа с кодом Д не найден');
     end;
 
-    -- РўРёРїС‹ РґРЅСЏ
-    FIND_SLDAYSTYPE_SHORTCODE(0, 0, nCOMPANY, 'Р‘', sDAYSTYPE_CODE, nDAYSTYPE_B);
-    FIND_SLDAYSTYPE_SHORTCODE(0, 0, nCOMPANY, 'Рћ', sDAYSTYPE_CODE, nDAYSTYPE_O);
-    FIND_SLDAYSTYPE_SHORTCODE(0, 0, nCOMPANY, 'РќРЈ', sDAYSTYPE_CODE, nDAYSTYPE_NU);
-    FIND_SLDAYSTYPE_SHORTCODE(0, 0, nCOMPANY, 'РќРЇ', sDAYSTYPE_CODE, nDAYSTYPE_N);
+    -- Типы дня
+    FIND_SLDAYSTYPE_SHORTCODE(0, 0, nCOMPANY, 'Б', sDAYSTYPE_CODE, nDAYSTYPE_B);
+    FIND_SLDAYSTYPE_SHORTCODE(0, 0, nCOMPANY, 'О', sDAYSTYPE_CODE, nDAYSTYPE_O);
+    FIND_SLDAYSTYPE_SHORTCODE(0, 0, nCOMPANY, 'НУ', sDAYSTYPE_CODE, nDAYSTYPE_NU);
+    FIND_SLDAYSTYPE_SHORTCODE(0, 0, nCOMPANY, 'НЯ', sDAYSTYPE_CODE, nDAYSTYPE_N);
 
     l_length := dbms_lob.getlength(cDATA);
     for i in 1..l_length loop
@@ -1035,9 +1035,9 @@ begin
     end loop;
 
     if nERROR_COUNT = 0 then
-      sMESSAGE := 'РўР°Р±РµР»СЊ РїРѕСЃРµС‰Р°РµРјРѕСЃС‚Рё СѓСЃРїРµС€РЅРѕ Р·Р°РіСЂСѓР¶РµРЅ РІ РџР°СЂСѓСЃ';
+      sMESSAGE := 'Табель посещаемости успешно загружен в Парус';
     else
-      sMESSAGE := substr(FORMAT_TEXT('Р—Р°РіСЂСѓР¶РµРЅРѕ РїРµСЂСЃРѕРЅ: %sРћС€РёР±РєРё Р·Р°РіСЂСѓР·РєРё:%s', to_char(nSUCCESS_COUNT)||chr(10), chr(10)||sERROR), 1, 4000);
+      sMESSAGE := substr(FORMAT_TEXT('Загружено персон: %sОшибки загрузки:%s', to_char(nSUCCESS_COUNT)||chr(10), chr(10)||sERROR), 1, 4000);
     end if;
   exception
     when OTHERS then
@@ -1050,16 +1050,16 @@ create or replace public synonym UDO_P_TIMESHEET_RECEIVE for UDO_P_TIMESHEET_REC
 grant execute on UDO_P_TIMESHEET_RECEIVE to public;
 
 create or replace procedure UDO_P_PSORGGRP_LOAD
--- Р—Р°РіСЂСѓР·РєР° С‚Р°Р±РµР»СЏ РїРѕСЃРµС‰Р°РµРјРѕСЃС‚Рё РіСЂСѓРїРїС‹ РёР· CSV С„Р°Р№Р»Р°
+-- Загрузка табеля посещаемости группы из CSV файла
 (
-  nCOMPANY        in number,            -- РћСЂРіР°РЅРёР·Р°С†РёСЏ
-  nIDENT          in number,            -- РРґРµРЅС‚РёС„РёРєР°С‚РѕСЂ РѕС‚РјРµС‡РµРЅРЅРѕР№ РіСЂСѓРїРїС‹
-  sMESSAGE        out varchar2          -- Р РµР·СѓР»СЊС‚Р°С‚
+  nCOMPANY        in number,            -- Организация
+  nIDENT          in number,            -- Идентификатор отмеченной группы
+  sMESSAGE        out varchar2          -- Результат
 )
 as
   cDATA           clob;
 begin
-  -- Р—Р°РіСЂСѓР·РєР° С„Р°Р№Р»Р° РёР· Р±СѓС„РµСЂР°
+  -- Загрузка файла из буфера
   begin
     select B.DATA
       into cDATA
@@ -1067,12 +1067,12 @@ begin
      where B.IDENT = nIDENT;
   exception
     when NO_DATA_FOUND then
-      P_EXCEPTION(0, 'Р”РѕР»Р¶РµРЅ Р±С‹С‚СЊ Р·Р°РіСЂСѓР¶РµРЅ CSV С„Р°Р№Р» РІ С„Р°Р№Р»РѕРІС‹Р№ Р±СѓС„РµСЂ.');
+      P_EXCEPTION(0, 'Должен быть загружен CSV файл в файловый буфер.');
     when TOO_MANY_ROWS then
-      P_EXCEPTION(0, 'Р”РѕР»Р¶РµРЅ Р±С‹С‚СЊ Р·Р°РіСЂСѓР¶РµРЅ С‚РѕР»СЊРєРѕ РѕРґРёРЅ CSV С„Р°Р№Р» РІ С„Р°Р№Р»РѕРІС‹Р№ Р±СѓС„РµСЂ.');
+      P_EXCEPTION(0, 'Должен быть загружен только один CSV файл в файловый буфер.');
   end;
 
-  -- РћР±СЂР°Р±РѕС‚РєР° С„Р°Р№Р»Р°
+  -- Обработка файла
   UDO_P_TIMESHEET_RECEIVE(nCOMPANY, cDATA, sMESSAGE);
 end;
 /
@@ -1081,13 +1081,13 @@ create or replace public synonym UDO_P_PSORGGRP_LOAD for UDO_P_PSORGGRP_LOAD;
 grant execute on UDO_P_PSORGGRP_LOAD to public;
 
 create or replace procedure UDO_P_TIMESHEET_SEND
--- РћС‚РїСЂР°РІРєР° С‚Р°Р±РµР»СЏ РїРѕСЃРµС‰Р°РµРјРѕСЃС‚Рё РІ С„РѕСЂРјР°С‚Рµ CSV
+-- Отправка табеля посещаемости в формате CSV
 (
-  nORG_RN         in number,            -- RN РѕСЂРіР°РЅРёР·Р°С†РёРё
-  sGROUP          in varchar2,          -- РњРЅРµРјРѕРєРѕРґ РіСЂСѓРїРїС‹
-  dPERIOD         in date,              -- РџРµСЂРёРѕРґ С‚Р°Р±РµР»СЏ РїРѕСЃРµС‰Р°РµРјРѕСЃС‚Рё
-  sFILENAME       out varchar2,         -- РРјСЏ С„Р°Р№Р»Р° CSV
-  cDATA           out clob              -- РўР°Р±РµР»СЊ РїРѕСЃРµС‰Р°РµРјРѕСЃС‚Рё РіСЂСѓРїРїС‹ РІ С„РѕСЂРјР°С‚Рµ CSV
+  nORG_RN         in number,            -- RN организации
+  sGROUP          in varchar2,          -- Мнемокод группы
+  dPERIOD         in date,              -- Период табеля посещаемости
+  sFILENAME       out varchar2,         -- Имя файла CSV
+  cDATA           out clob              -- Табель посещаемости группы в формате CSV
 )
 as
   dPERIOD_        date := trunc(sysdate);
@@ -1101,17 +1101,17 @@ as
   sDAYSTYPE       PKG_STD.tSTRING;
   sDAY_VALUE      PKG_STD.tSTRING;
 begin
-  -- РЎРѕР·РґР°РЅРёРµ Р±СѓС„РµСЂР°
+  -- Создание буфера
   DBMS_LOB.CREATETEMPORARY(cDATA, true);
 
-  -- РџРµСЂРёРѕРґ, РѕСЂРіР°РЅРёР·Р°С†РёСЏ Рё РіСЂСѓРїРїР°
+  -- Период, организация и группа
   for cur in
   (
     select O.CODE ORG_CODE,
            A.AGNIDNUMB,
            G.CODE GROUP_CODE,
            UDO_F_SLSCHEDULE_MNEMOCODE(G.SHEDULE) SLSCHEDULE_CODE,
-           decode(lower(K.CODE), 'СЏСЃР»Рё', 1, 2) MEALS,
+           decode(lower(K.CODE), 'ясли', 1, 2) MEALS,
            G.RN GROUP_RN
       from PSORG O,
            AGNLIST A,
@@ -1124,20 +1124,23 @@ begin
        and G.GROUPKND = K.RN
   )
   loop
-    -- Р—Р°РіРѕР»РѕРІРѕРє
-    sFILENAME := UDO_F_MAKE_FILE_NAME(cur.ORG_CODE||'_'||cur.GROUP_CODE||'_'||sPERIOD||'_РџР°СЂСѓСЃ', 'csv');
+    -- Заголовок
+    sFILENAME := UDO_F_MAKE_FILE_NAME(
+      format_text('%s_%s_%s_Парус', cur.ORG_CODE, replace(cur.GROUP_CODE, '/', '-'), sPERIOD),
+      'csv'
+    );
     sTEXT := sPERIOD||';'||CR||
              cur.ORG_CODE||';'||cur.AGNIDNUMB||';'||CR||
              cur.GROUP_CODE||';'||cur.SLSCHEDULE_CODE||';'||cur.MEALS||';'||CR;
     DBMS_LOB.WRITEAPPEND(cDATA, length(sTEXT), sTEXT);
-    sTEXT := 'Р¤Р°РјРёР»РёСЏ;РРјСЏ;РћС‚С‡РµСЃС‚РІРѕ;Р”Р°С‚Р° СЂРѕР¶РґРµРЅРёСЏ;РўРµР»РµС„РѕРЅ 1;РўРµР»РµС„РѕРЅ 2;Р”Р°С‚Р° РїРѕСЃС‚СѓРїР»РµРЅРёСЏ;Р”Р°С‚Р° РІС‹Р±С‹С‚РёСЏ;';
+    sTEXT := 'Фамилия;Имя;Отчество;Дата рождения;Телефон 1;Телефон 2;Дата поступления;Дата выбытия;';
     for d in 1..nDAYS_IN_MONTH loop
       sTEXT := sTEXT||d||';';
     end loop;
     sTEXT := sTEXT||CR;
     DBMS_LOB.WRITEAPPEND(cDATA, length(sTEXT), sTEXT);
 
-    -- РўР°Р±РµР»СЊ РїРѕСЃРµС‰Р°РµРјРѕСЃС‚Рё
+    -- Табель посещаемости
     for card in
     (
       select A1.AGNFAMILYNAME,
@@ -1166,11 +1169,11 @@ begin
              A1.AGNBURN
     )
     loop
-      -- РџРµСЂСЃРѕРЅР° РІ РіСЂСѓРїРїРµ
+      -- Персона в группе
       sTEXT := card.AGNFAMILYNAME||';'||card.AGNFIRSTNAME||';'||card.AGNLASTNAME||';'||card.AGNBURN||';'||
                card.PHONE||';'||card.PHONE2||';'||card.DATE_FROM||';'||card.DATE_TO||';';
 
-      -- РџРѕСЃРµС‰Р°РµРјРѕСЃС‚СЊ РїРѕ РґРЅСЏРј
+      -- Посещаемость по дням
       for d in 1 .. nDAYS_IN_MONTH loop
         begin
           select H.WORKEDHOURS,
@@ -1187,11 +1190,11 @@ begin
              and D.RN = H.PRN
              and H.HOURSTYPE = T.RN
              and T.BASE_SIGN = 1
-             and substr(upper(T.SHORT_CODE), 1, 1) = 'Р”';
+             and substr(upper(T.SHORT_CODE), 1, 1) = 'Д';
 
-          if sDAYSTYPE in ('Р‘', 'Рћ', 'РќРЈ') then
+          if sDAYSTYPE in ('Б', 'О', 'НУ') then
             sDAY_VALUE := sDAYSTYPE;
-          elsif sDAYSTYPE = 'РќРЇ' then
+          elsif sDAYSTYPE = 'НЯ' then
             sDAY_VALUE := nWORKEDHOURS||sDAYSTYPE;
           else
             sDAY_VALUE := nWORKEDHOURS;
@@ -1215,30 +1218,30 @@ create or replace public synonym UDO_P_TIMESHEET_SEND for UDO_P_TIMESHEET_SEND;
 grant execute on UDO_P_TIMESHEET_SEND to public;
 
 create or replace procedure UDO_P_PSORGGRP_UNLOAD
--- РћС‚РїСЂР°РІРєР° С‚Р°Р±РµР»СЏ РїРѕСЃРµС‰Р°РµРјРѕСЃС‚Рё РІ С„РѕСЂРјР°С‚Рµ CSV
+-- Отправка табеля посещаемости в формате CSV
 (
-  nIDENT          in number,            -- РРґРµРЅС‚РёС„РёРєР°С‚РѕСЂ РѕС‚РјРµС‡РµРЅРЅРѕР№ РіСЂСѓРїРїС‹
-  dPERIOD         in date               -- РџРµСЂРёРѕРґ С‚Р°Р±РµР»СЏ РїРѕСЃРµС‰Р°РµРјРѕСЃС‚Рё
+  nIDENT          in number,            -- Идентификатор отмеченной группы
+  dPERIOD         in date               -- Период табеля посещаемости
 )
 as
   cDATA           clob;
   sFILENAME       PKG_STD.tSTRING;
   nCOUNT          binary_integer;
 begin
-  -- РЎРѕР·РґР°РЅРёРµ Р±СѓС„РµСЂР°
+  -- Создание буфера
   DBMS_LOB.CREATETEMPORARY(cDATA, true);
 
-  -- РџСЂРѕРІРµСЂРєР° РєРѕР»РёС‡РµСЃС‚РІР° РѕС‚РјРµС‡РµРЅРЅС‹С… РіСЂСѓРїРї
+  -- Проверка количества отмеченных групп
   select count(*)
     into nCOUNT
     from SELECTLIST SL
    where SL.IDENT = nIDENT;
 
   if nCOUNT != 1 then
-    P_EXCEPTION(0, 'Р”РѕР»Р¶РЅР° Р±С‹С‚СЊ РѕС‚РјРµС‡РµРЅР° РѕРґРЅР° РіСЂСѓРїРїР°.');
+    P_EXCEPTION(0, 'Должна быть отмечена одна группа.');
   end if;
 
-  -- Р’С‹РіСЂСѓР·РєР° С‚Р°Р±РµР»СЏ РїРѕСЃРµС‰Р°РµРјРѕСЃС‚Рё РіСЂСѓРїРїС‹ РІ С„РѕСЂРјР°С‚Рµ CSV
+  -- Выгрузка табеля посещаемости группы в формате CSV
   for cur in
   (
     select G.PRN ORG_RN,
@@ -1251,18 +1254,18 @@ begin
   loop
     UDO_P_TIMESHEET_SEND
     (
-      nORG_RN         => cur.ORG_RN,        -- RN РѕСЂРіР°РЅРёР·Р°С†РёРё
-      sGROUP          => cur.GROUP_CODE,    -- РњРЅРµРјРѕРєРѕРґ РіСЂСѓРїРїС‹
-      dPERIOD         => dPERIOD,           -- РџРµСЂРёРѕРґ С‚Р°Р±РµР»СЏ РїРѕСЃРµС‰Р°РµРјРѕСЃС‚Рё
-      sFILENAME       => sFILENAME,         -- РРјСЏ С„Р°Р№Р»Р° CSV
-      cDATA           => cDATA              -- РўР°Р±РµР»СЊ РїРѕСЃРµС‰Р°РµРјРѕСЃС‚Рё РіСЂСѓРїРїС‹ РІ С„РѕСЂРјР°С‚Рµ CSV
+      nORG_RN         => cur.ORG_RN,        -- RN организации
+      sGROUP          => cur.GROUP_CODE,    -- Мнемокод группы
+      dPERIOD         => dPERIOD,           -- Период табеля посещаемости
+      sFILENAME       => sFILENAME,         -- Имя файла CSV
+      cDATA           => cDATA              -- Табель посещаемости группы в формате CSV
     );
   end loop;
 
-  -- Р—Р°РїРёСЃСЊ Р±СѓС„РµСЂР°
+  -- Запись буфера
   P_FILE_BUFFER_INSERT(nIDENT, sFILENAME, cDATA, null);
 
-  -- РћСЃРІРѕР±РѕР¶РґРµРЅРёРµ Р±СѓС„РµСЂР°
+  -- Освобождение буфера
   DBMS_LOB.FREETEMPORARY(cDATA);
 end;
 /
@@ -1271,10 +1274,10 @@ create or replace public synonym UDO_P_PSORGGRP_UNLOAD for UDO_P_PSORGGRP_UNLOAD
 grant execute on UDO_P_PSORGGRP_UNLOAD to public;
 
 create or replace procedure UDO_P_PSORG_GET_GROUPS
--- РџРѕР»СѓС‡РµРЅРёРµ СЃРїРёСЃРєР° РіСЂСѓРїРї СѓС‡СЂРµР¶РґРµРЅРёСЏ
+-- Получение списка групп учреждения
 (
-  nORG_RN         in number,            -- RN СѓС‡СЂРµР¶РґРµРЅРёСЏ
-  sGROUPS         out varchar2          -- РЎРїРёСЃРѕРє РјРЅРµРјРѕРєРѕРґРѕРІ РіСЂСѓРїРї С‡РµСЂРµР· ";"
+  nORG_RN         in number,            -- RN учреждения
+  sGROUPS         out varchar2          -- Список мнемокодов групп через ";"
 )
 as
 begin
@@ -1297,10 +1300,10 @@ create or replace public synonym UDO_P_PSORG_GET_GROUPS for UDO_P_PSORG_GET_GROU
 grant execute on UDO_P_PSORG_GET_GROUPS to public;
 
 create or replace procedure UDO_P_GET_PSORGS
--- РџРѕР»СѓС‡РµРЅРёРµ СЃРїРёСЃРєР° СѓС‡СЂРµР¶РґРµРЅРёР№ РїРѕ РРќРќ
+-- Получение списка учреждений по ИНН
 (
-  sINN            in varchar2,          -- РРќРќ СѓС‡СЂРµР¶РґРµРЅРёСЏ
-  sORGS_JSON      out varchar2          -- РЎРїРёСЃРѕРє СѓС‡СЂРµР¶РґРµРЅРёР№ РІ С„РѕСЂРјР°С‚Рµ JSON
+  sINN            in varchar2,          -- ИНН учреждения
+  sORGS_JSON      out varchar2          -- Список учреждений в формате JSON
 )
 as
 begin
@@ -1344,11 +1347,11 @@ create or replace public synonym UDO_P_GET_PSORGS for UDO_P_GET_PSORGS;
 grant execute on UDO_P_GET_PSORGS to public;
 
 create or replace procedure UDO_P_GET_PSORG
--- РџРѕР»СѓС‡РµРЅРёРµ СѓС‡СЂРµР¶РґРµРЅРёСЏ РїРѕ РРќРќ Рё РјРЅРµРјРµРјРѕРєРѕРґСѓ РіСЂСѓРїРїС‹
+-- Получение учреждения по ИНН и мнемемокоду группы
 (
-  sINN            in varchar2,          -- РРќРќ СѓС‡СЂРµР¶РґРµРЅРёСЏ
-  sGROUP          in varchar2,          -- РњРЅРµРјРѕРєРѕРґ РіСЂСѓРїРїС‹
-  sORG_JSON       out varchar2          -- РЎРїРёСЃРѕРє СѓС‡СЂРµР¶РґРµРЅРёР№ РІ С„РѕСЂРјР°С‚Рµ JSON
+  sINN            in varchar2,          -- ИНН учреждения
+  sGROUP          in varchar2,          -- Мнемокод группы
+  sORG_JSON       out varchar2          -- Список учреждений в формате JSON
 )
 as
 begin
@@ -1424,221 +1427,221 @@ begin
   :new.FD := PKG_EXT.IIF( :new.FD = 0, null, :new.FD );
   :new.FH := PKG_EXT.IIF( :new.FH = 0, null, :new.FH );
 
-  if :new.F1 is not null and :new.D1 is not null and :new.D1 != 'РќРЇ' then
-    P_EXCEPTION(0, '1 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
+  if :new.F1 is not null and :new.D1 is not null and :new.D1 != 'НЯ' then
+    P_EXCEPTION(0, '1 число: часы требуются только для НЯ.');
   end if;
-  if :new.F1 is null and :new.D1 = 'РќРЇ' then
-    P_EXCEPTION(0, '1 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
-  end if;
-
-  if :new.F2 is not null and :new.D2 is not null and :new.D2 != 'РќРЇ' then
-    P_EXCEPTION(0, '2 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
-  end if;
-  if :new.F2 is null and :new.D2 = 'РќРЇ' then
-    P_EXCEPTION(0, '2 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
+  if :new.F1 is null and :new.D1 = 'НЯ' then
+    P_EXCEPTION(0, '1 число: для НЯ требуются часы.');
   end if;
 
-  if :new.F3 is not null and :new.D3 is not null and :new.D3 != 'РќРЇ' then
-    P_EXCEPTION(0, '3 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
+  if :new.F2 is not null and :new.D2 is not null and :new.D2 != 'НЯ' then
+    P_EXCEPTION(0, '2 число: часы требуются только для НЯ.');
   end if;
-  if :new.F3 is null and :new.D3 = 'РќРЇ' then
-    P_EXCEPTION(0, '3 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
-  end if;
-
-  if :new.F4 is not null and :new.D4 is not null and :new.D4 != 'РќРЇ' then
-    P_EXCEPTION(0, '4 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
-  end if;
-  if :new.F4 is null and :new.D4 = 'РќРЇ' then
-    P_EXCEPTION(0, '4 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
+  if :new.F2 is null and :new.D2 = 'НЯ' then
+    P_EXCEPTION(0, '2 число: для НЯ требуются часы.');
   end if;
 
-  if :new.F5 is not null and :new.D5 is not null and :new.D5 != 'РќРЇ' then
-    P_EXCEPTION(0, '5 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
+  if :new.F3 is not null and :new.D3 is not null and :new.D3 != 'НЯ' then
+    P_EXCEPTION(0, '3 число: часы требуются только для НЯ.');
   end if;
-  if :new.F5 is null and :new.D5 = 'РќРЇ' then
-    P_EXCEPTION(0, '5 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
-  end if;
-
-  if :new.F6 is not null and :new.D6 is not null and :new.D6 != 'РќРЇ' then
-    P_EXCEPTION(0, '6 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
-  end if;
-  if :new.F6 is null and :new.D6 = 'РќРЇ' then
-    P_EXCEPTION(0, '6 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
+  if :new.F3 is null and :new.D3 = 'НЯ' then
+    P_EXCEPTION(0, '3 число: для НЯ требуются часы.');
   end if;
 
-  if :new.F7 is not null and :new.D7 is not null and :new.D7 != 'РќРЇ' then
-    P_EXCEPTION(0, '7 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
+  if :new.F4 is not null and :new.D4 is not null and :new.D4 != 'НЯ' then
+    P_EXCEPTION(0, '4 число: часы требуются только для НЯ.');
   end if;
-  if :new.F7 is null and :new.D7 = 'РќРЇ' then
-    P_EXCEPTION(0, '7 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
-  end if;
-
-  if :new.F8 is not null and :new.D8 is not null and :new.D8 != 'РќРЇ' then
-    P_EXCEPTION(0, '8 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
-  end if;
-  if :new.F8 is null and :new.D8 = 'РќРЇ' then
-    P_EXCEPTION(0, '8 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
+  if :new.F4 is null and :new.D4 = 'НЯ' then
+    P_EXCEPTION(0, '4 число: для НЯ требуются часы.');
   end if;
 
-  if :new.F9 is not null and :new.D9 is not null and :new.D9 != 'РќРЇ' then
-    P_EXCEPTION(0, '9 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
+  if :new.F5 is not null and :new.D5 is not null and :new.D5 != 'НЯ' then
+    P_EXCEPTION(0, '5 число: часы требуются только для НЯ.');
   end if;
-  if :new.F9 is null and :new.D9 = 'РќРЇ' then
-    P_EXCEPTION(0, '9 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
-  end if;
-
-  if :new.F10 is not null and :new.D10 is not null and :new.D10 != 'РќРЇ' then
-    P_EXCEPTION(0, '10 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
-  end if;
-  if :new.F10 is null and :new.D10 = 'РќРЇ' then
-    P_EXCEPTION(0, '10 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
+  if :new.F5 is null and :new.D5 = 'НЯ' then
+    P_EXCEPTION(0, '5 число: для НЯ требуются часы.');
   end if;
 
-  if :new.F11 is not null and :new.D11 is not null and :new.D11 != 'РќРЇ' then
-    P_EXCEPTION(0, '11 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
+  if :new.F6 is not null and :new.D6 is not null and :new.D6 != 'НЯ' then
+    P_EXCEPTION(0, '6 число: часы требуются только для НЯ.');
   end if;
-  if :new.F11 is null and :new.D11 = 'РќРЇ' then
-    P_EXCEPTION(0, '11 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
-  end if;
-
-  if :new.F12 is not null and :new.D12 is not null and :new.D12 != 'РќРЇ' then
-    P_EXCEPTION(0, '12 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
-  end if;
-  if :new.F12 is null and :new.D12 = 'РќРЇ' then
-    P_EXCEPTION(0, '12 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
+  if :new.F6 is null and :new.D6 = 'НЯ' then
+    P_EXCEPTION(0, '6 число: для НЯ требуются часы.');
   end if;
 
-  if :new.F13 is not null and :new.D13 is not null and :new.D13 != 'РќРЇ' then
-    P_EXCEPTION(0, '13 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
+  if :new.F7 is not null and :new.D7 is not null and :new.D7 != 'НЯ' then
+    P_EXCEPTION(0, '7 число: часы требуются только для НЯ.');
   end if;
-  if :new.F13 is null and :new.D13 = 'РќРЇ' then
-    P_EXCEPTION(0, '13 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
-  end if;
-
-  if :new.F14 is not null and :new.D14 is not null and :new.D14 != 'РќРЇ' then
-    P_EXCEPTION(0, '14 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
-  end if;
-  if :new.F14 is null and :new.D14 = 'РќРЇ' then
-    P_EXCEPTION(0, '14 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
+  if :new.F7 is null and :new.D7 = 'НЯ' then
+    P_EXCEPTION(0, '7 число: для НЯ требуются часы.');
   end if;
 
-  if :new.F15 is not null and :new.D15 is not null and :new.D15 != 'РќРЇ' then
-    P_EXCEPTION(0, '15 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
+  if :new.F8 is not null and :new.D8 is not null and :new.D8 != 'НЯ' then
+    P_EXCEPTION(0, '8 число: часы требуются только для НЯ.');
   end if;
-  if :new.F15 is null and :new.D15 = 'РќРЇ' then
-    P_EXCEPTION(0, '15 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
-  end if;
-
-  if :new.F16 is not null and :new.D16 is not null and :new.D16 != 'РќРЇ' then
-    P_EXCEPTION(0, '16 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
-  end if;
-  if :new.F16 is null and :new.D16 = 'РќРЇ' then
-    P_EXCEPTION(0, '16 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
+  if :new.F8 is null and :new.D8 = 'НЯ' then
+    P_EXCEPTION(0, '8 число: для НЯ требуются часы.');
   end if;
 
-  if :new.F17 is not null and :new.D17 is not null and :new.D17 != 'РќРЇ' then
-    P_EXCEPTION(0, '17 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
+  if :new.F9 is not null and :new.D9 is not null and :new.D9 != 'НЯ' then
+    P_EXCEPTION(0, '9 число: часы требуются только для НЯ.');
   end if;
-  if :new.F17 is null and :new.D17 = 'РќРЇ' then
-    P_EXCEPTION(0, '17 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
-  end if;
-
-  if :new.F18 is not null and :new.D18 is not null and :new.D18 != 'РќРЇ' then
-    P_EXCEPTION(0, '18 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
-  end if;
-  if :new.F18 is null and :new.D18 = 'РќРЇ' then
-    P_EXCEPTION(0, '18 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
+  if :new.F9 is null and :new.D9 = 'НЯ' then
+    P_EXCEPTION(0, '9 число: для НЯ требуются часы.');
   end if;
 
-  if :new.F19 is not null and :new.D19 is not null and :new.D19 != 'РќРЇ' then
-    P_EXCEPTION(0, '19 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
+  if :new.F10 is not null and :new.D10 is not null and :new.D10 != 'НЯ' then
+    P_EXCEPTION(0, '10 число: часы требуются только для НЯ.');
   end if;
-  if :new.F19 is null and :new.D19 = 'РќРЇ' then
-    P_EXCEPTION(0, '19 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
-  end if;
-
-  if :new.F20 is not null and :new.D20 is not null and :new.D20 != 'РќРЇ' then
-    P_EXCEPTION(0, '20 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
-  end if;
-  if :new.F20 is null and :new.D20 = 'РќРЇ' then
-    P_EXCEPTION(0, '20 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
+  if :new.F10 is null and :new.D10 = 'НЯ' then
+    P_EXCEPTION(0, '10 число: для НЯ требуются часы.');
   end if;
 
-  if :new.F21 is not null and :new.D21 is not null and :new.D21 != 'РќРЇ' then
-    P_EXCEPTION(0, '21 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
+  if :new.F11 is not null and :new.D11 is not null and :new.D11 != 'НЯ' then
+    P_EXCEPTION(0, '11 число: часы требуются только для НЯ.');
   end if;
-  if :new.F21 is null and :new.D21 = 'РќРЇ' then
-    P_EXCEPTION(0, '21 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
-  end if;
-
-  if :new.F22 is not null and :new.D22 is not null and :new.D22 != 'РќРЇ' then
-    P_EXCEPTION(0, '22 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
-  end if;
-  if :new.F22 is null and :new.D22 = 'РќРЇ' then
-    P_EXCEPTION(0, '22 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
+  if :new.F11 is null and :new.D11 = 'НЯ' then
+    P_EXCEPTION(0, '11 число: для НЯ требуются часы.');
   end if;
 
-  if :new.F23 is not null and :new.D23 is not null and :new.D23 != 'РќРЇ' then
-    P_EXCEPTION(0, '23 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
+  if :new.F12 is not null and :new.D12 is not null and :new.D12 != 'НЯ' then
+    P_EXCEPTION(0, '12 число: часы требуются только для НЯ.');
   end if;
-  if :new.F23 is null and :new.D23 = 'РќРЇ' then
-    P_EXCEPTION(0, '23 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
-  end if;
-
-  if :new.F24 is not null and :new.D24 is not null and :new.D24 != 'РќРЇ' then
-    P_EXCEPTION(0, '24 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
-  end if;
-  if :new.F24 is null and :new.D24 = 'РќРЇ' then
-    P_EXCEPTION(0, '24 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
+  if :new.F12 is null and :new.D12 = 'НЯ' then
+    P_EXCEPTION(0, '12 число: для НЯ требуются часы.');
   end if;
 
-  if :new.F25 is not null and :new.D25 is not null and :new.D25 != 'РќРЇ' then
-    P_EXCEPTION(0, '25 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
+  if :new.F13 is not null and :new.D13 is not null and :new.D13 != 'НЯ' then
+    P_EXCEPTION(0, '13 число: часы требуются только для НЯ.');
   end if;
-  if :new.F25 is null and :new.D25 = 'РќРЇ' then
-    P_EXCEPTION(0, '25 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
-  end if;
-
-  if :new.F26 is not null and :new.D26 is not null and :new.D26 != 'РќРЇ' then
-    P_EXCEPTION(0, '26 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
-  end if;
-  if :new.F26 is null and :new.D26 = 'РќРЇ' then
-    P_EXCEPTION(0, '26 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
+  if :new.F13 is null and :new.D13 = 'НЯ' then
+    P_EXCEPTION(0, '13 число: для НЯ требуются часы.');
   end if;
 
-  if :new.F27 is not null and :new.D27 is not null and :new.D27 != 'РќРЇ' then
-    P_EXCEPTION(0, '27 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
+  if :new.F14 is not null and :new.D14 is not null and :new.D14 != 'НЯ' then
+    P_EXCEPTION(0, '14 число: часы требуются только для НЯ.');
   end if;
-  if :new.F27 is null and :new.D27 = 'РќРЇ' then
-    P_EXCEPTION(0, '27 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
-  end if;
-
-  if :new.F28 is not null and :new.D28 is not null and :new.D28 != 'РќРЇ' then
-    P_EXCEPTION(0, '28 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
-  end if;
-  if :new.F28 is null and :new.D28 = 'РќРЇ' then
-    P_EXCEPTION(0, '28 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
+  if :new.F14 is null and :new.D14 = 'НЯ' then
+    P_EXCEPTION(0, '14 число: для НЯ требуются часы.');
   end if;
 
-  if :new.F29 is not null and :new.D29 is not null and :new.D29 != 'РќРЇ' then
-    P_EXCEPTION(0, '29 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
+  if :new.F15 is not null and :new.D15 is not null and :new.D15 != 'НЯ' then
+    P_EXCEPTION(0, '15 число: часы требуются только для НЯ.');
   end if;
-  if :new.F29 is null and :new.D29 = 'РќРЇ' then
-    P_EXCEPTION(0, '29 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
-  end if;
-
-  if :new.F30 is not null and :new.D30 is not null and :new.D30 != 'РќРЇ' then
-    P_EXCEPTION(0, '30 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
-  end if;
-  if :new.F30 is null and :new.D30 = 'РќРЇ' then
-    P_EXCEPTION(0, '30 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
+  if :new.F15 is null and :new.D15 = 'НЯ' then
+    P_EXCEPTION(0, '15 число: для НЯ требуются часы.');
   end if;
 
-  if :new.F31 is not null and :new.D31 is not null and :new.D31 != 'РќРЇ' then
-    P_EXCEPTION(0, '31 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
+  if :new.F16 is not null and :new.D16 is not null and :new.D16 != 'НЯ' then
+    P_EXCEPTION(0, '16 число: часы требуются только для НЯ.');
   end if;
-  if :new.F31 is null and :new.D31 = 'РќРЇ' then
-    P_EXCEPTION(0, '31 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
+  if :new.F16 is null and :new.D16 = 'НЯ' then
+    P_EXCEPTION(0, '16 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F17 is not null and :new.D17 is not null and :new.D17 != 'НЯ' then
+    P_EXCEPTION(0, '17 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F17 is null and :new.D17 = 'НЯ' then
+    P_EXCEPTION(0, '17 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F18 is not null and :new.D18 is not null and :new.D18 != 'НЯ' then
+    P_EXCEPTION(0, '18 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F18 is null and :new.D18 = 'НЯ' then
+    P_EXCEPTION(0, '18 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F19 is not null and :new.D19 is not null and :new.D19 != 'НЯ' then
+    P_EXCEPTION(0, '19 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F19 is null and :new.D19 = 'НЯ' then
+    P_EXCEPTION(0, '19 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F20 is not null and :new.D20 is not null and :new.D20 != 'НЯ' then
+    P_EXCEPTION(0, '20 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F20 is null and :new.D20 = 'НЯ' then
+    P_EXCEPTION(0, '20 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F21 is not null and :new.D21 is not null and :new.D21 != 'НЯ' then
+    P_EXCEPTION(0, '21 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F21 is null and :new.D21 = 'НЯ' then
+    P_EXCEPTION(0, '21 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F22 is not null and :new.D22 is not null and :new.D22 != 'НЯ' then
+    P_EXCEPTION(0, '22 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F22 is null and :new.D22 = 'НЯ' then
+    P_EXCEPTION(0, '22 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F23 is not null and :new.D23 is not null and :new.D23 != 'НЯ' then
+    P_EXCEPTION(0, '23 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F23 is null and :new.D23 = 'НЯ' then
+    P_EXCEPTION(0, '23 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F24 is not null and :new.D24 is not null and :new.D24 != 'НЯ' then
+    P_EXCEPTION(0, '24 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F24 is null and :new.D24 = 'НЯ' then
+    P_EXCEPTION(0, '24 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F25 is not null and :new.D25 is not null and :new.D25 != 'НЯ' then
+    P_EXCEPTION(0, '25 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F25 is null and :new.D25 = 'НЯ' then
+    P_EXCEPTION(0, '25 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F26 is not null and :new.D26 is not null and :new.D26 != 'НЯ' then
+    P_EXCEPTION(0, '26 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F26 is null and :new.D26 = 'НЯ' then
+    P_EXCEPTION(0, '26 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F27 is not null and :new.D27 is not null and :new.D27 != 'НЯ' then
+    P_EXCEPTION(0, '27 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F27 is null and :new.D27 = 'НЯ' then
+    P_EXCEPTION(0, '27 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F28 is not null and :new.D28 is not null and :new.D28 != 'НЯ' then
+    P_EXCEPTION(0, '28 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F28 is null and :new.D28 = 'НЯ' then
+    P_EXCEPTION(0, '28 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F29 is not null and :new.D29 is not null and :new.D29 != 'НЯ' then
+    P_EXCEPTION(0, '29 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F29 is null and :new.D29 = 'НЯ' then
+    P_EXCEPTION(0, '29 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F30 is not null and :new.D30 is not null and :new.D30 != 'НЯ' then
+    P_EXCEPTION(0, '30 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F30 is null and :new.D30 = 'НЯ' then
+    P_EXCEPTION(0, '30 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F31 is not null and :new.D31 is not null and :new.D31 != 'НЯ' then
+    P_EXCEPTION(0, '31 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F31 is null and :new.D31 = 'НЯ' then
+    P_EXCEPTION(0, '31 число: для НЯ требуются часы.');
   end if;
 end;
 /
@@ -1682,221 +1685,221 @@ begin
   :new.FD := PKG_EXT.IIF( :new.FD = 0, null, :new.FD );
   :new.FH := PKG_EXT.IIF( :new.FH = 0, null, :new.FH );
 
-  if :new.F1 is not null and :new.D1 is not null and :new.D1 != 'РќРЇ' then
-    P_EXCEPTION(0, '1 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
+  if :new.F1 is not null and :new.D1 is not null and :new.D1 != 'НЯ' then
+    P_EXCEPTION(0, '1 число: часы требуются только для НЯ.');
   end if;
-  if :new.F1 is null and :new.D1 = 'РќРЇ' then
-    P_EXCEPTION(0, '1 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
-  end if;
-
-  if :new.F2 is not null and :new.D2 is not null and :new.D2 != 'РќРЇ' then
-    P_EXCEPTION(0, '2 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
-  end if;
-  if :new.F2 is null and :new.D2 = 'РќРЇ' then
-    P_EXCEPTION(0, '2 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
+  if :new.F1 is null and :new.D1 = 'НЯ' then
+    P_EXCEPTION(0, '1 число: для НЯ требуются часы.');
   end if;
 
-  if :new.F3 is not null and :new.D3 is not null and :new.D3 != 'РќРЇ' then
-    P_EXCEPTION(0, '3 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
+  if :new.F2 is not null and :new.D2 is not null and :new.D2 != 'НЯ' then
+    P_EXCEPTION(0, '2 число: часы требуются только для НЯ.');
   end if;
-  if :new.F3 is null and :new.D3 = 'РќРЇ' then
-    P_EXCEPTION(0, '3 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
-  end if;
-
-  if :new.F4 is not null and :new.D4 is not null and :new.D4 != 'РќРЇ' then
-    P_EXCEPTION(0, '4 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
-  end if;
-  if :new.F4 is null and :new.D4 = 'РќРЇ' then
-    P_EXCEPTION(0, '4 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
+  if :new.F2 is null and :new.D2 = 'НЯ' then
+    P_EXCEPTION(0, '2 число: для НЯ требуются часы.');
   end if;
 
-  if :new.F5 is not null and :new.D5 is not null and :new.D5 != 'РќРЇ' then
-    P_EXCEPTION(0, '5 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
+  if :new.F3 is not null and :new.D3 is not null and :new.D3 != 'НЯ' then
+    P_EXCEPTION(0, '3 число: часы требуются только для НЯ.');
   end if;
-  if :new.F5 is null and :new.D5 = 'РќРЇ' then
-    P_EXCEPTION(0, '5 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
-  end if;
-
-  if :new.F6 is not null and :new.D6 is not null and :new.D6 != 'РќРЇ' then
-    P_EXCEPTION(0, '6 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
-  end if;
-  if :new.F6 is null and :new.D6 = 'РќРЇ' then
-    P_EXCEPTION(0, '6 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
+  if :new.F3 is null and :new.D3 = 'НЯ' then
+    P_EXCEPTION(0, '3 число: для НЯ требуются часы.');
   end if;
 
-  if :new.F7 is not null and :new.D7 is not null and :new.D7 != 'РќРЇ' then
-    P_EXCEPTION(0, '7 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
+  if :new.F4 is not null and :new.D4 is not null and :new.D4 != 'НЯ' then
+    P_EXCEPTION(0, '4 число: часы требуются только для НЯ.');
   end if;
-  if :new.F7 is null and :new.D7 = 'РќРЇ' then
-    P_EXCEPTION(0, '7 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
-  end if;
-
-  if :new.F8 is not null and :new.D8 is not null and :new.D8 != 'РќРЇ' then
-    P_EXCEPTION(0, '8 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
-  end if;
-  if :new.F8 is null and :new.D8 = 'РќРЇ' then
-    P_EXCEPTION(0, '8 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
+  if :new.F4 is null and :new.D4 = 'НЯ' then
+    P_EXCEPTION(0, '4 число: для НЯ требуются часы.');
   end if;
 
-  if :new.F9 is not null and :new.D9 is not null and :new.D9 != 'РќРЇ' then
-    P_EXCEPTION(0, '9 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
+  if :new.F5 is not null and :new.D5 is not null and :new.D5 != 'НЯ' then
+    P_EXCEPTION(0, '5 число: часы требуются только для НЯ.');
   end if;
-  if :new.F9 is null and :new.D9 = 'РќРЇ' then
-    P_EXCEPTION(0, '9 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
-  end if;
-
-  if :new.F10 is not null and :new.D10 is not null and :new.D10 != 'РќРЇ' then
-    P_EXCEPTION(0, '10 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
-  end if;
-  if :new.F10 is null and :new.D10 = 'РќРЇ' then
-    P_EXCEPTION(0, '10 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
+  if :new.F5 is null and :new.D5 = 'НЯ' then
+    P_EXCEPTION(0, '5 число: для НЯ требуются часы.');
   end if;
 
-  if :new.F11 is not null and :new.D11 is not null and :new.D11 != 'РќРЇ' then
-    P_EXCEPTION(0, '11 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
+  if :new.F6 is not null and :new.D6 is not null and :new.D6 != 'НЯ' then
+    P_EXCEPTION(0, '6 число: часы требуются только для НЯ.');
   end if;
-  if :new.F11 is null and :new.D11 = 'РќРЇ' then
-    P_EXCEPTION(0, '11 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
-  end if;
-
-  if :new.F12 is not null and :new.D12 is not null and :new.D12 != 'РќРЇ' then
-    P_EXCEPTION(0, '12 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
-  end if;
-  if :new.F12 is null and :new.D12 = 'РќРЇ' then
-    P_EXCEPTION(0, '12 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
+  if :new.F6 is null and :new.D6 = 'НЯ' then
+    P_EXCEPTION(0, '6 число: для НЯ требуются часы.');
   end if;
 
-  if :new.F13 is not null and :new.D13 is not null and :new.D13 != 'РќРЇ' then
-    P_EXCEPTION(0, '13 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
+  if :new.F7 is not null and :new.D7 is not null and :new.D7 != 'НЯ' then
+    P_EXCEPTION(0, '7 число: часы требуются только для НЯ.');
   end if;
-  if :new.F13 is null and :new.D13 = 'РќРЇ' then
-    P_EXCEPTION(0, '13 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
-  end if;
-
-  if :new.F14 is not null and :new.D14 is not null and :new.D14 != 'РќРЇ' then
-    P_EXCEPTION(0, '14 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
-  end if;
-  if :new.F14 is null and :new.D14 = 'РќРЇ' then
-    P_EXCEPTION(0, '14 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
+  if :new.F7 is null and :new.D7 = 'НЯ' then
+    P_EXCEPTION(0, '7 число: для НЯ требуются часы.');
   end if;
 
-  if :new.F15 is not null and :new.D15 is not null and :new.D15 != 'РќРЇ' then
-    P_EXCEPTION(0, '15 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
+  if :new.F8 is not null and :new.D8 is not null and :new.D8 != 'НЯ' then
+    P_EXCEPTION(0, '8 число: часы требуются только для НЯ.');
   end if;
-  if :new.F15 is null and :new.D15 = 'РќРЇ' then
-    P_EXCEPTION(0, '15 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
-  end if;
-
-  if :new.F16 is not null and :new.D16 is not null and :new.D16 != 'РќРЇ' then
-    P_EXCEPTION(0, '16 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
-  end if;
-  if :new.F16 is null and :new.D16 = 'РќРЇ' then
-    P_EXCEPTION(0, '16 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
+  if :new.F8 is null and :new.D8 = 'НЯ' then
+    P_EXCEPTION(0, '8 число: для НЯ требуются часы.');
   end if;
 
-  if :new.F17 is not null and :new.D17 is not null and :new.D17 != 'РќРЇ' then
-    P_EXCEPTION(0, '17 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
+  if :new.F9 is not null and :new.D9 is not null and :new.D9 != 'НЯ' then
+    P_EXCEPTION(0, '9 число: часы требуются только для НЯ.');
   end if;
-  if :new.F17 is null and :new.D17 = 'РќРЇ' then
-    P_EXCEPTION(0, '17 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
-  end if;
-
-  if :new.F18 is not null and :new.D18 is not null and :new.D18 != 'РќРЇ' then
-    P_EXCEPTION(0, '18 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
-  end if;
-  if :new.F18 is null and :new.D18 = 'РќРЇ' then
-    P_EXCEPTION(0, '18 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
+  if :new.F9 is null and :new.D9 = 'НЯ' then
+    P_EXCEPTION(0, '9 число: для НЯ требуются часы.');
   end if;
 
-  if :new.F19 is not null and :new.D19 is not null and :new.D19 != 'РќРЇ' then
-    P_EXCEPTION(0, '19 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
+  if :new.F10 is not null and :new.D10 is not null and :new.D10 != 'НЯ' then
+    P_EXCEPTION(0, '10 число: часы требуются только для НЯ.');
   end if;
-  if :new.F19 is null and :new.D19 = 'РќРЇ' then
-    P_EXCEPTION(0, '19 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
-  end if;
-
-  if :new.F20 is not null and :new.D20 is not null and :new.D20 != 'РќРЇ' then
-    P_EXCEPTION(0, '20 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
-  end if;
-  if :new.F20 is null and :new.D20 = 'РќРЇ' then
-    P_EXCEPTION(0, '20 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
+  if :new.F10 is null and :new.D10 = 'НЯ' then
+    P_EXCEPTION(0, '10 число: для НЯ требуются часы.');
   end if;
 
-  if :new.F21 is not null and :new.D21 is not null and :new.D21 != 'РќРЇ' then
-    P_EXCEPTION(0, '21 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
+  if :new.F11 is not null and :new.D11 is not null and :new.D11 != 'НЯ' then
+    P_EXCEPTION(0, '11 число: часы требуются только для НЯ.');
   end if;
-  if :new.F21 is null and :new.D21 = 'РќРЇ' then
-    P_EXCEPTION(0, '21 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
-  end if;
-
-  if :new.F22 is not null and :new.D22 is not null and :new.D22 != 'РќРЇ' then
-    P_EXCEPTION(0, '22 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
-  end if;
-  if :new.F22 is null and :new.D22 = 'РќРЇ' then
-    P_EXCEPTION(0, '22 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
+  if :new.F11 is null and :new.D11 = 'НЯ' then
+    P_EXCEPTION(0, '11 число: для НЯ требуются часы.');
   end if;
 
-  if :new.F23 is not null and :new.D23 is not null and :new.D23 != 'РќРЇ' then
-    P_EXCEPTION(0, '23 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
+  if :new.F12 is not null and :new.D12 is not null and :new.D12 != 'НЯ' then
+    P_EXCEPTION(0, '12 число: часы требуются только для НЯ.');
   end if;
-  if :new.F23 is null and :new.D23 = 'РќРЇ' then
-    P_EXCEPTION(0, '23 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
-  end if;
-
-  if :new.F24 is not null and :new.D24 is not null and :new.D24 != 'РќРЇ' then
-    P_EXCEPTION(0, '24 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
-  end if;
-  if :new.F24 is null and :new.D24 = 'РќРЇ' then
-    P_EXCEPTION(0, '24 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
+  if :new.F12 is null and :new.D12 = 'НЯ' then
+    P_EXCEPTION(0, '12 число: для НЯ требуются часы.');
   end if;
 
-  if :new.F25 is not null and :new.D25 is not null and :new.D25 != 'РќРЇ' then
-    P_EXCEPTION(0, '25 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
+  if :new.F13 is not null and :new.D13 is not null and :new.D13 != 'НЯ' then
+    P_EXCEPTION(0, '13 число: часы требуются только для НЯ.');
   end if;
-  if :new.F25 is null and :new.D25 = 'РќРЇ' then
-    P_EXCEPTION(0, '25 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
-  end if;
-
-  if :new.F26 is not null and :new.D26 is not null and :new.D26 != 'РќРЇ' then
-    P_EXCEPTION(0, '26 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
-  end if;
-  if :new.F26 is null and :new.D26 = 'РќРЇ' then
-    P_EXCEPTION(0, '26 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
+  if :new.F13 is null and :new.D13 = 'НЯ' then
+    P_EXCEPTION(0, '13 число: для НЯ требуются часы.');
   end if;
 
-  if :new.F27 is not null and :new.D27 is not null and :new.D27 != 'РќРЇ' then
-    P_EXCEPTION(0, '27 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
+  if :new.F14 is not null and :new.D14 is not null and :new.D14 != 'НЯ' then
+    P_EXCEPTION(0, '14 число: часы требуются только для НЯ.');
   end if;
-  if :new.F27 is null and :new.D27 = 'РќРЇ' then
-    P_EXCEPTION(0, '27 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
-  end if;
-
-  if :new.F28 is not null and :new.D28 is not null and :new.D28 != 'РќРЇ' then
-    P_EXCEPTION(0, '28 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
-  end if;
-  if :new.F28 is null and :new.D28 = 'РќРЇ' then
-    P_EXCEPTION(0, '28 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
+  if :new.F14 is null and :new.D14 = 'НЯ' then
+    P_EXCEPTION(0, '14 число: для НЯ требуются часы.');
   end if;
 
-  if :new.F29 is not null and :new.D29 is not null and :new.D29 != 'РќРЇ' then
-    P_EXCEPTION(0, '29 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
+  if :new.F15 is not null and :new.D15 is not null and :new.D15 != 'НЯ' then
+    P_EXCEPTION(0, '15 число: часы требуются только для НЯ.');
   end if;
-  if :new.F29 is null and :new.D29 = 'РќРЇ' then
-    P_EXCEPTION(0, '29 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
-  end if;
-
-  if :new.F30 is not null and :new.D30 is not null and :new.D30 != 'РќРЇ' then
-    P_EXCEPTION(0, '30 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
-  end if;
-  if :new.F30 is null and :new.D30 = 'РќРЇ' then
-    P_EXCEPTION(0, '30 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
+  if :new.F15 is null and :new.D15 = 'НЯ' then
+    P_EXCEPTION(0, '15 число: для НЯ требуются часы.');
   end if;
 
-  if :new.F31 is not null and :new.D31 is not null and :new.D31 != 'РќРЇ' then
-    P_EXCEPTION(0, '31 С‡РёСЃР»Рѕ: С‡Р°СЃС‹ С‚СЂРµР±СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РќРЇ.');
+  if :new.F16 is not null and :new.D16 is not null and :new.D16 != 'НЯ' then
+    P_EXCEPTION(0, '16 число: часы требуются только для НЯ.');
   end if;
-  if :new.F31 is null and :new.D31 = 'РќРЇ' then
-    P_EXCEPTION(0, '31 С‡РёСЃР»Рѕ: РґР»СЏ РќРЇ С‚СЂРµР±СѓСЋС‚СЃСЏ С‡Р°СЃС‹.');
+  if :new.F16 is null and :new.D16 = 'НЯ' then
+    P_EXCEPTION(0, '16 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F17 is not null and :new.D17 is not null and :new.D17 != 'НЯ' then
+    P_EXCEPTION(0, '17 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F17 is null and :new.D17 = 'НЯ' then
+    P_EXCEPTION(0, '17 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F18 is not null and :new.D18 is not null and :new.D18 != 'НЯ' then
+    P_EXCEPTION(0, '18 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F18 is null and :new.D18 = 'НЯ' then
+    P_EXCEPTION(0, '18 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F19 is not null and :new.D19 is not null and :new.D19 != 'НЯ' then
+    P_EXCEPTION(0, '19 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F19 is null and :new.D19 = 'НЯ' then
+    P_EXCEPTION(0, '19 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F20 is not null and :new.D20 is not null and :new.D20 != 'НЯ' then
+    P_EXCEPTION(0, '20 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F20 is null and :new.D20 = 'НЯ' then
+    P_EXCEPTION(0, '20 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F21 is not null and :new.D21 is not null and :new.D21 != 'НЯ' then
+    P_EXCEPTION(0, '21 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F21 is null and :new.D21 = 'НЯ' then
+    P_EXCEPTION(0, '21 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F22 is not null and :new.D22 is not null and :new.D22 != 'НЯ' then
+    P_EXCEPTION(0, '22 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F22 is null and :new.D22 = 'НЯ' then
+    P_EXCEPTION(0, '22 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F23 is not null and :new.D23 is not null and :new.D23 != 'НЯ' then
+    P_EXCEPTION(0, '23 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F23 is null and :new.D23 = 'НЯ' then
+    P_EXCEPTION(0, '23 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F24 is not null and :new.D24 is not null and :new.D24 != 'НЯ' then
+    P_EXCEPTION(0, '24 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F24 is null and :new.D24 = 'НЯ' then
+    P_EXCEPTION(0, '24 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F25 is not null and :new.D25 is not null and :new.D25 != 'НЯ' then
+    P_EXCEPTION(0, '25 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F25 is null and :new.D25 = 'НЯ' then
+    P_EXCEPTION(0, '25 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F26 is not null and :new.D26 is not null and :new.D26 != 'НЯ' then
+    P_EXCEPTION(0, '26 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F26 is null and :new.D26 = 'НЯ' then
+    P_EXCEPTION(0, '26 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F27 is not null and :new.D27 is not null and :new.D27 != 'НЯ' then
+    P_EXCEPTION(0, '27 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F27 is null and :new.D27 = 'НЯ' then
+    P_EXCEPTION(0, '27 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F28 is not null and :new.D28 is not null and :new.D28 != 'НЯ' then
+    P_EXCEPTION(0, '28 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F28 is null and :new.D28 = 'НЯ' then
+    P_EXCEPTION(0, '28 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F29 is not null and :new.D29 is not null and :new.D29 != 'НЯ' then
+    P_EXCEPTION(0, '29 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F29 is null and :new.D29 = 'НЯ' then
+    P_EXCEPTION(0, '29 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F30 is not null and :new.D30 is not null and :new.D30 != 'НЯ' then
+    P_EXCEPTION(0, '30 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F30 is null and :new.D30 = 'НЯ' then
+    P_EXCEPTION(0, '30 число: для НЯ требуются часы.');
+  end if;
+
+  if :new.F31 is not null and :new.D31 is not null and :new.D31 != 'НЯ' then
+    P_EXCEPTION(0, '31 число: часы требуются только для НЯ.');
+  end if;
+  if :new.F31 is null and :new.D31 = 'НЯ' then
+    P_EXCEPTION(0, '31 число: для НЯ требуются часы.');
   end if;
 end;
 /
