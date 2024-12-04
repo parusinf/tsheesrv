@@ -22,13 +22,14 @@ webapp:
   port: 5001
 
 sqlite:
-  database: /var/lib/sqlite/tsheesrv.db
+  database: tsheesrv.db
   echo: False
 
 oracle:
   nls_lang: RUSSIAN_RUSSIA.CL8MSWIN1251
   min_pool: 0  # минимальное число соединений в пуле на каждую базу данных
   max_pool: 4  # максимальное число соединений в пуле на каждую базу данных
+  lib_dir: D:\Oracle\instantclient_19_20
 
 developer:
   name: Павел Александрович Никитин

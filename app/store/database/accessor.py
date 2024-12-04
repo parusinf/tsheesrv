@@ -17,6 +17,7 @@ class OracleAccessor:
         logging.info(f'Подключение пула баз данных')
         config = app['config']
         os.environ['NLS_LANG'] = config['oracle']['nls_lang']
+        cx_Oracle.init_oracle_client(lib_dir=config['oracle']['lib_dir'])
         for db_key, db_param in config['database'].items():
             try:
                 self.pool[db_key] = await cx_Oracle_async.create_pool(

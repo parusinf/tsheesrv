@@ -1,7 +1,7 @@
 from datetime import datetime
 import cx_Oracle
 import logging
-from typing import Optional
+from typing import Optional, List, Tuple
 from requests import JSONDecodeError
 from app.store.database.accessor import OracleAccessor
 from tools.cp1251 import encode_cp1251
@@ -10,10 +10,10 @@ import json
 db = OracleAccessor()
 
 
-async def get_orgs(db_key, org_inn) -> list[dict]:
+async def get_orgs(db_key, org_inn) -> List[dict]:
     """
     Поиск списка учреждений по ИНН в заданной базе данных
-    Для одного ИНН может быть одно или два учреждения: для основных групп и групп доп. образования
+    Для одного ИНН может быть одно или два учреждения: для основных групп и групп дополнительного образования
     """
     try:
         async with db.pool[db_key].acquire() as connection:
@@ -33,7 +33,7 @@ async def get_orgs(db_key, org_inn) -> list[dict]:
     return []
 
 
-async def get_org(db_key, org_inn, group) -> dict | None:
+async def get_org(db_key, org_inn, group) -> Optional[dict]:
     """
     Поиск учреждения по ИНН и мнемокоду группы в заданной базе данных
     """
@@ -54,7 +54,7 @@ async def get_org(db_key, org_inn, group) -> dict | None:
     return None
 
 
-async def find_orgs(org_inn) -> list[dict]:
+async def find_orgs(org_inn) -> List[dict]:
     """Поиск Паруса, обслуживающего учреждения с заданным ИНН"""
     for db_key in db.pool.keys():
         orgs = await get_orgs(db_key, org_inn)
@@ -63,7 +63,7 @@ async def find_orgs(org_inn) -> list[dict]:
     return []
 
 
-async def find_org(org_inn, group) -> dict | None:
+async def find_org(org_inn, group) -> Optional[dict]:
     """Поиск Паруса, обслуживающего учреждение с заданным ИНН и мнемокодом группы"""
     for db_key in db.pool.keys():
         org = await get_org(db_key, org_inn, group)
@@ -90,7 +90,7 @@ async def get_groups(db_key, org_rn) -> Optional[str]:
             return groups_var.getvalue()
 
 
-async def receive_timesheet(db_key, org_rn, group, period=datetime.now()) -> tuple[bytes, str]:
+async def receive_timesheet(db_key, org_rn, group, period=datetime.now()) -> Tuple[bytes, str]:
     """Получение табеля посещаемости по ключу базы данных, регистрационному номеру организации и мнемокоду группы"""
     async with db.pool[db_key].acquire() as connection:
         async with connection.cursor() as cursor:
@@ -101,7 +101,7 @@ async def receive_timesheet(db_key, org_rn, group, period=datetime.now()) -> tup
             return encode_cp1251(content), filename_var.getvalue()
 
 
-async def receive(org_inn, group, period=datetime.now()) -> tuple[bytes, str]:
+async def receive(org_inn, group, period=datetime.now()) -> Tuple[bytes, str]:
     """Получение табеля посещаемости по ИНН организации и мнемокоду группы"""
     org = await find_org(org_inn, group)
     if org is None:

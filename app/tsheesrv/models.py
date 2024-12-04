@@ -1,10 +1,10 @@
-from typing import Optional
+from typing import Optional, List
 
 import app.store.database.models as database
 import app.store.cache.models as cache
 
 
-async def get_orgs(org_inn) -> list[dict]:
+async def get_orgs(org_inn) -> List[dict]:
     """Поиск учреждений по ИНН в кэше либо в базах данных с кэшированием"""
     # Поиск учреждений по ИНН в кэше
     orgs = await cache.get_orgs(org_inn)
