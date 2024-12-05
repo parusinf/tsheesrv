@@ -1,10 +1,11 @@
 <service>
   <id>tsheesrv</id>
   <name>tsheesrv</name>
-  <description>tsheesrv</description>
-  <executable>c:\opt\Python311\python.exe</executable>
-  <logpath>c:\srv\tsheesrv\</logpath>
+  <description>Timesheets application server</description>
+  <executable>C:\Users\System-DBA\AppData\Local\Programs\Python\Python38\python.exe</executable>
+  <logpath>c:\nikitin\tsheesrv\</logpath>
   <logmode>roll</logmode>
-  <depend></depend>
-  <startargument>c:\srv\tsheesrv\main.py</startargument>
+  <depend>nginx</depend>
+  <startargument>c:\nikitin\tsheesrv\main.py</startargument>
+  <env name="PYTHONPATH" value="c:\users\system-dba\appdata\roaming\python\python38\site-packages"/>
 </service>

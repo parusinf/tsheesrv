@@ -29,7 +29,7 @@ oracle:
   nls_lang: RUSSIAN_RUSSIA.CL8MSWIN1251
   min_pool: 0  # минимальное число соединений в пуле на каждую базу данных
   max_pool: 4  # максимальное число соединений в пуле на каждую базу данных
-  lib_dir: D:\Oracle\instantclient_19_20
+  lib_dir: C:\oracle\instantclient_18_5
 
 developer:
   name: Павел Александрович Никитин
