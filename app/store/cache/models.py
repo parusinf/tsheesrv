@@ -1,6 +1,6 @@
 from typing import Optional, List
 
-from sqlalchemy import insert, ColumnElement
+from sqlalchemy import insert
 from sqlalchemy.future import select
 from app.store.cache.accessor import SqliteAccessor, Org
 from app.store.cache.tools import row_to_dict, rows_to_list
@@ -10,7 +10,7 @@ db = SqliteAccessor()
 
 async def get_orgs(org_inn) -> List[dict]:
     async with db.session() as session:
-        stmt = select(Org).where(ColumnElement[org_inn == Org.org_inn])
+        stmt = select(Org).where(org_inn == Org.org_inn)
         result = await session.execute(stmt)
         return rows_to_list(result)
 
@@ -18,8 +18,8 @@ async def get_orgs(org_inn) -> List[dict]:
 async def get_org(org_code, org_inn) -> Optional[dict]:
     async with db.session() as session:
         stmt = select(Org).where(
-            ColumnElement[org_inn == Org.org_inn],
-            ColumnElement[org_code == Org.org_code])
+            org_inn == Org.org_inn,
+            org_code == Org.org_code)
         result = await session.execute(stmt)
         return row_to_dict(result.first())
 

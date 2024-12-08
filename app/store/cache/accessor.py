@@ -3,9 +3,9 @@ from aiohttp import web
 from sqlalchemy import Column, UniqueConstraint
 from sqlalchemy import Integer
 from sqlalchemy import String
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 Base = declarative_base()
 
@@ -39,7 +39,7 @@ class SqliteAccessor:
         )
         async with self.engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
-        self.session = async_sessionmaker(
+        self.session = sessionmaker(
             self.engine, class_=AsyncSession, expire_on_commit=False,
         )
 
