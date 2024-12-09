@@ -1,4 +1,4 @@
-aiohttp~=3.9.0b0
+aiohttp~=3.8.6
 cx_Oracle~=8.3.0
 cx_Oracle_async~=0.3.3
 PyYAML~=6.0
