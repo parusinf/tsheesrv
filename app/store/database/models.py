@@ -1,5 +1,5 @@
 from datetime import datetime
-import cx_Oracle
+import oracledb
 import logging
 from typing import Optional, List, Tuple
 from requests import JSONDecodeError
@@ -10,10 +10,10 @@ import json
 db = OracleAccessor()
 
 
-async def get_orgs(db_key, org_inn) -> List[dict]:
+async def get_orgs(db_key: str, org_inn: str) -> List[dict]:
     """
-    Поиск списка учреждений по ИНН в заданной базе данных
-    Для одного ИНН может быть одно или два учреждения: для основных групп и групп дополнительного образования
+    Поиск списка учреждений по ИНН в заданной базе данных.
+    Для одного ИНН может быть одно или два учреждения: для основных групп и групп дополнительного образования.
     """
     try:
         async with db.pool[db_key].acquire() as connection:
@@ -26,16 +26,17 @@ async def get_orgs(db_key, org_inn) -> List[dict]:
                     for org in orgs:
                         org.update({'db_key': db_key})
                     return orgs
-    except cx_Oracle.Error as error:
+    except oracledb.Error as error:
         logging.error(error)
     except JSONDecodeError:
-        logging.error(f'Ошибка разбора JSON: {orgs_json}')
+        # orgs_json может быть не определён, если ошибка случилась раньше
+        logging.error('Ошибка разбора JSON: значение не получено или некорректно')
     return []
 
 
-async def get_org(db_key, org_inn, group) -> Optional[dict]:
+async def get_org(db_key: str, org_inn: str, group: str) -> Optional[dict]:
     """
-    Поиск учреждения по ИНН и мнемокоду группы в заданной базе данных
+    Поиск учреждения по ИНН и мнемокоду группы в заданной базе данных.
     """
     try:
         async with db.pool[db_key].acquire() as connection:
@@ -47,15 +48,15 @@ async def get_org(db_key, org_inn, group) -> Optional[dict]:
                     org = json.loads(org_json)
                     org.update({'db_key': db_key})
                     return org
-    except cx_Oracle.Error as error:
+    except oracledb.Error as error:
         logging.error(error)
     except JSONDecodeError:
-        logging.error(f'Ошибка разбора JSON: {org_json}')
+        logging.error('Ошибка разбора JSON: значение не получено или некорректно')
     return None
 
 
-async def find_orgs(org_inn) -> List[dict]:
-    """Поиск Паруса, обслуживающего учреждения с заданным ИНН"""
+async def find_orgs(org_inn: str) -> List[dict]:
+    """Поиск Паруса, обслуживающего учреждения с заданным ИНН."""
     for db_key in db.pool.keys():
         orgs = await get_orgs(db_key, org_inn)
         if orgs:
@@ -63,8 +64,8 @@ async def find_orgs(org_inn) -> List[dict]:
     return []
 
 
-async def find_org(org_inn, group) -> Optional[dict]:
-    """Поиск Паруса, обслуживающего учреждение с заданным ИНН и мнемокодом группы"""
+async def find_org(org_inn: str, group: str) -> Optional[dict]:
+    """Поиск Паруса, обслуживающего учреждение с заданным ИНН и мнемокодом группы."""
     for db_key in db.pool.keys():
         org = await get_org(db_key, org_inn, group)
         if org:
@@ -72,8 +73,8 @@ async def find_org(org_inn, group) -> Optional[dict]:
     return None
 
 
-async def get_person(db_key, org_rn, family, firstname, lastname) -> Optional[int]:
-    """Поиск сотрудника в учреждении"""
+async def get_person(db_key: str, org_rn: int, family: str, firstname: str, lastname: str) -> Optional[int]:
+    """Поиск сотрудника в учреждении."""
     async with db.pool[db_key].acquire() as connection:
         async with connection.cursor() as cursor:
             person_rn_var = await cursor.var(int)
@@ -81,8 +82,8 @@ async def get_person(db_key, org_rn, family, firstname, lastname) -> Optional[in
             return person_rn_var.getvalue()
 
 
-async def get_groups(db_key, org_rn) -> Optional[str]:
-    """Получение списка групп учреждения"""
+async def get_groups(db_key: str, org_rn: int) -> Optional[str]:
+    """Получение списка групп учреждения."""
     async with db.pool[db_key].acquire() as connection:
         async with connection.cursor() as cursor:
             groups_var = await cursor.var(str)
@@ -90,33 +91,33 @@ async def get_groups(db_key, org_rn) -> Optional[str]:
             return groups_var.getvalue()
 
 
-async def receive_timesheet(db_key, org_rn, group, period=datetime.now()) -> Tuple[bytes, str]:
-    """Получение табеля посещаемости по ключу базы данных, регистрационному номеру организации и мнемокоду группы"""
+async def receive_timesheet(db_key: str, org_rn: int, group: str, period=datetime.now()) -> Tuple[bytes, str]:
+    """Получение табеля посещаемости по ключу базы данных, регистрационному номеру организации и мнемокоду группы."""
     async with db.pool[db_key].acquire() as connection:
         async with connection.cursor() as cursor:
             filename_var = await cursor.var(str)
-            content_var = await cursor.var(cx_Oracle.DB_TYPE_CLOB)
+            content_var = await cursor.var(oracledb.DB_TYPE.CLOB)
             await cursor.callproc('UDO_P_TIMESHEET_SEND', [org_rn, group, period, filename_var, content_var])
             content = content_var.getvalue().read()
             return encode_cp1251(content), filename_var.getvalue()
 
 
-async def receive(org_inn, group, period=datetime.now()) -> Tuple[bytes, str]:
-    """Получение табеля посещаемости по ИНН организации и мнемокоду группы"""
+async def receive(org_inn: str, group: str, period=datetime.now()) -> Tuple[bytes, str]:
+    """Получение табеля посещаемости по ИНН организации и мнемокоду группы."""
     org = await find_org(org_inn, group)
     if org is None:
         raise LookupError(f'В учреждении с ИНН {org_inn} группа с мнемокодом "{group}" не найдена')
     async with db.pool[org['db_key']].acquire() as connection:
         async with connection.cursor() as cursor:
             filename_var = await cursor.var(str)
-            content_var = await cursor.var(cx_Oracle.DB_TYPE_CLOB)
+            content_var = await cursor.var(oracledb.DB_TYPE.CLOB)
             await cursor.callproc('UDO_P_TIMESHEET_SEND', [org['org_rn'], group, period, filename_var, content_var])
             content = content_var.getvalue().read()
             return encode_cp1251(content), filename_var.getvalue()
 
 
-async def send_timesheet(db_key, company_rn, content) -> str:
-    """Отправка табеля посещаемости группы в формате CSV в Парус"""
+async def send_timesheet(db_key: str, company_rn: int, content: str) -> str:
+    """Отправка табеля посещаемости группы в формате CSV в Парус."""
     async with db.pool[db_key].acquire() as connection:
         async with connection.cursor() as cursor:
             result_var = await cursor.var(str)

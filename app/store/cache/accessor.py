@@ -32,7 +32,6 @@ class SqliteAccessor:
         app.on_cleanup.append(self._on_disconnect)
 
     async def _on_connect(self, app: web.Application):
-        logging.info(f'Подключение кэша')
         self.engine = create_async_engine(
             f'sqlite+aiosqlite:///{app["config"]["sqlite"]["database"]}?cache=shared',
             echo=app['config']['sqlite']['echo'],
@@ -44,5 +43,4 @@ class SqliteAccessor:
         )
 
     async def _on_disconnect(self, _):
-        logging.info(f'Отключение кэша')
         await self.engine.dispose()

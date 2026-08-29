@@ -1,8 +1,7 @@
 from aiohttp import web
 import os
 import logging
-import cx_Oracle
-import cx_Oracle_async
+import oracledb
 
 
 class OracleAccessor:
@@ -14,13 +13,14 @@ class OracleAccessor:
         app.on_cleanup.append(self.on_disconnect)
 
     async def on_connect(self, app: web.Application):
-        logging.info(f'Подключение пула баз данных')
+        logging.info('Подключение пула баз данных (thin mode)')
         config = app['config']
+
         os.environ['NLS_LANG'] = config['oracle']['nls_lang']
-        cx_Oracle.init_oracle_client(lib_dir=config['oracle']['lib_dir'])
+
         for db_key, db_param in config['database'].items():
             try:
-                self.pool[db_key] = await cx_Oracle_async.create_pool(
+                pool = oracledb.create_pool(
                     host=db_param['host'],
                     port=db_param['port'],
                     service_name=db_param['service_name'],
@@ -28,11 +28,18 @@ class OracleAccessor:
                     password=db_param['password'],
                     min=config['oracle']['min_pool'],
                     max=config['oracle']['max_pool'],
+                    timeout=10,
                 )
-            except cx_Oracle.Error as error:
-                logging.error(error)
+                self.pool[db_key] = pool
+                logging.info(f'Пул {db_key} успешно создан (thin mode)')
+            except Exception as e:
+                # Удаляем ключ, если что-то пошло не так, чтобы не было None
+                if db_key in self.pool:
+                    del self.pool[db_key]
+                logging.exception(f'Ошибка создания пула {db_key}: {e}')
+
+        logging.info(f'Всего активных пулов: {len(self.pool)}')
 
     async def on_disconnect(self, _):
-        logging.info(f'Отключение пула баз данных')
-        for pool in self.pool.values():
-            await pool.close()
+        self.pool.clear()
+        logging.info('Пулы очищены')
