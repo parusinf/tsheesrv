@@ -1,4 +1,3 @@
-import logging
 from aiohttp import web
 from sqlalchemy import Column, UniqueConstraint
 from sqlalchemy import Integer
