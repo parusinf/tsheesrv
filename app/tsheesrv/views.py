@@ -5,6 +5,8 @@ import aiohttp
 from aiohttp import web
 import logging
 
+logger = logging.getLogger(__name__)
+
 from app.tsheesrv.models import (
     send_timesheet as db_send_timesheet,
     get_person as db_get_person,
@@ -19,27 +21,65 @@ from tools.cp1251 import decode_cp1251
 
 
 async def send_timesheet_by_content(request: web.Request):
-    content, filename = await _extract_content(request)
+    # 1. Читаем файл из multipart
+    reader = await request.multipart()
+    file_data = None
+    filename = None
+
+    async for part in reader:
+        # Убедись, что имя поля совпадает с тем, что шлёт Dart (скорее всего 'content')
+        if part.name == 'content':
+            filename = part.filename
+            file_data = await part.read(decode=False)
+            break
+
+    if file_data is None:
+        logger.warning("File field 'content' not found in multipart")
+        return web.json_response({'error': 'File "content" not found'}, status=422)
+
+    # 2. Декодируем в строку (CP1251 — под твою логику)
+    try:
+        content = file_data.decode('cp1251')
+    except UnicodeDecodeError:
+        # fallback на utf-8, если кодировка вдруг другая
+        content = file_data.decode('utf-8', errors='replace')
+
     lines = content.splitlines()
     if len(lines) < 2:
-        return web.Response(text='Invalid file format', status=400)
+        logger.warning("Invalid file format: too few lines")
+        return web.Response(text='Invalid file format: need at least 2 lines', status=400)
 
-    org_code, org_inn = lines[1].split(';')[:2]
+    # 3. Парсим параметры ИЗ ФАЙЛА (как и должно быть для мобильного приложения)
+    # Ожидаем формат: строка 0 — заголовок, строка 1 — org_code;org_inn;...
+    try:
+        parts = lines[1].split(';')
+        org_code = parts[0].strip()
+        org_inn = parts[1].strip()
+    except Exception as e:
+        logger.warning("Failed to parse org_code/org_inn from file: %s", e)
+        return web.Response(text='Invalid file format: cannot parse org_code and org_inn', status=400)
 
+    logger.info("Parsed from file: org_code=%s, org_inn=%s", org_code, org_inn)
+
+    # 4. Ищем организацию
     db = request.app['db']
-    # Используем find_org, который принимает db
-    org = await db_find_org(db, org_inn, org_code)  # или group, проверь, какой параметр нужен
-    logging.info('db_key: %s, company_rn: %s', org['db_key'], org['company_rn'].to_str())  # noqa: E501, E261, E231)
+    org = await db_find_org(db, org_inn, org_code)  # проверь сигнатуру: org_inn, org_code или наоборот
 
-    if org:
+    if org is None:
+        msg = f'Учреждение "{org_code}" с ИНН {org_inn} не найдено'
+        logger.warning(msg)
+        # Возвращаем 422 с понятным сообщением, вместо падения с TypeError
+        return web.json_response({'error': msg}, status=422)
+
+    # 5. Вызываем процедуру отправки
+    try:
         result = await db_send_timesheet(db, org['db_key'], org['company_rn'], content)
-        status = 202
-    else:
-        result = f'Учреждение "{org_code}" с ИНН {org_inn} не найдено'
-        status = 422
-
-    return web.Response(text=f'{result}\n', status=status)
-
+        logger.info("Timesheet sent successfully: db_key=%s, company_rn=%s",
+                    org['db_key'], org['company_rn'])
+        return web.Response(text=f'{result}\n', status=202)
+    except Exception as e:
+        logger.exception("DB error in send_timesheet")
+        return web.Response(text=str(e), status=500)
 
 async def send_timesheet(request: web.Request):
     content, filename = await _extract_content2(request)
