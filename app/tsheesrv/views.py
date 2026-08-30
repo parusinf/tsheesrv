@@ -43,8 +43,9 @@ async def send_timesheet_by_content(request: web.Request):
 async def send_timesheet(request: web.Request):
     content, filename = await _extract_content2(request)
 
-    db_key = request.rel_url.query.get('db_key')
-    company_rn_str = request.rel_url.query.get('company_rn')
+    data = await request.post()  # читает form-поля (не файлы)
+    db_key = data.get('db_key')
+    company_rn_str = data.get('company_rn')
 
     if not db_key or not company_rn_str:
         return web.Response(text='Missing db_key or company_rn', status=400)
