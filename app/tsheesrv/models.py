@@ -125,7 +125,7 @@ async def receive_timesheet(db, db_key: str, org_rn: int, group: str, period=dat
     async def body(conn):
         with conn.cursor() as cursor:
             filename_var = cursor.var(str)
-            content_var = cursor.var(oracledb.DB_TYPE.CLOB)
+            content_var = cursor.var(oracledb.DB_TYPE_CLOB)
 
             cursor.callproc(
                 'UDO_P_TIMESHEET_SEND',
@@ -145,7 +145,7 @@ async def receive(db, org_inn: str, group: str, period=datetime.now()) -> Tuple[
     async def body(conn):
         with conn.cursor() as cursor:
             filename_var = cursor.var(str)
-            content_var = cursor.var(oracledb.DB_TYPE.CLOB)
+            content_var = cursor.var(oracledb.DB_TYPE_CLOB)
 
             cursor.callproc(
                 'UDO_P_TIMESHEET_SEND',
