@@ -44,8 +44,7 @@ async def get_orgs(db, db_key: str, org_inn: str) -> List[dict]:
             # var() — синхронная операция (БЕЗ await)
             orgs_json_var = cursor.var(str)
 
-            # callproc() — асинхронная операция (нужен await)
-            await cursor.callproc('UDO_P_GET_PSORGS', [org_inn, orgs_json_var])
+            cursor.callproc('UDO_P_GET_PSORGS', [org_inn, orgs_json_var])
             orgs_json = orgs_json_var.getvalue()
 
             if orgs_json:
@@ -61,7 +60,7 @@ async def get_org(db, db_key: str, org_inn: str, group: str) -> Optional[dict]:
     async def body(conn):
         with conn.cursor() as cursor:
             org_json_var = cursor.var(str)
-            await cursor.callproc('UDO_P_GET_PSORG', [org_inn, group, org_json_var])
+            cursor.callproc('UDO_P_GET_PSORG', [org_inn, group, org_json_var])
             org_json = org_json_var.getvalue()
 
             if org_json:
@@ -99,7 +98,7 @@ async def get_person(db, db_key: str, org_rn: int, family: str, firstname: str, 
     async def body(conn):
         with conn.cursor() as cursor:
             person_rn_var = cursor.var(int)
-            await cursor.callproc(
+            cursor.callproc(
                 'UDO_FIND_PERSON_BY_FIO',
                 [org_rn, family, firstname, lastname, person_rn_var]
             )
@@ -114,7 +113,7 @@ async def get_groups(db, db_key: str, org_rn: int) -> Optional[str]:
     async def body(conn):
         with conn.cursor() as cursor:
             groups_var = cursor.var(str)
-            await cursor.callproc('UDO_P_PSORG_GET_GROUPS', [org_rn, groups_var])
+            cursor.callproc('UDO_P_PSORG_GET_GROUPS', [org_rn, groups_var])
             return groups_var.getvalue()
     try:
         return await _with_conn(db, db_key, body)
@@ -128,7 +127,7 @@ async def receive_timesheet(db, db_key: str, org_rn: int, group: str, period=dat
             filename_var = cursor.var(str)
             content_var = cursor.var(oracledb.DB_TYPE.CLOB)
 
-            await cursor.callproc(
+            cursor.callproc(
                 'UDO_P_TIMESHEET_SEND',
                 [org_rn, group, period, filename_var, content_var]
             )
@@ -148,7 +147,7 @@ async def receive(db, org_inn: str, group: str, period=datetime.now()) -> Tuple[
             filename_var = cursor.var(str)
             content_var = cursor.var(oracledb.DB_TYPE.CLOB)
 
-            await cursor.callproc(
+            cursor.callproc(
                 'UDO_P_TIMESHEET_SEND',
                 [org['org_rn'], group, period, filename_var, content_var]
             )
@@ -162,7 +161,7 @@ async def send_timesheet(db, db_key: str, company_rn: int, content: str) -> str:
     async def body(conn):
         with conn.cursor() as cursor:
             result_var = cursor.var(str)
-            await cursor.callproc('UDO_P_TIMESHEET_RECEIVE', [company_rn, content, result_var])
-            await conn.commit()
+            cursor.callproc('UDO_P_TIMESHEET_RECEIVE', [company_rn, content, result_var])
+            conn.commit()
             return result_var.getvalue()
     return await _with_conn(db, db_key, body)
