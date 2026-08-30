@@ -10,8 +10,8 @@ from tools.cp1251 import encode_cp1251
 
 async def _with_conn(db, db_key: str, cb):
     """
-    Гарантированный acquire/release.
     cb — async callable, принимающий connection.
+    acquire/release — синхронные в oracledb.
     """
     pool = db.pool.get(db_key)
     if not pool:
@@ -19,7 +19,8 @@ async def _with_conn(db, db_key: str, cb):
 
     conn = None
     try:
-        conn = await pool.acquire()
+        # acquire — синхронный, НЕ делаем await
+        conn = pool.acquire()
         return await cb(conn)
     except oracledb.Error as e:
         logging.error("Oracle error (db_key=%s): %s", db_key, e)
@@ -27,7 +28,8 @@ async def _with_conn(db, db_key: str, cb):
     finally:
         if conn is not None:
             try:
-                await pool.release(conn)
+                # release — тоже синхронный
+                pool.release(conn)
             except Exception:
                 pass
 
