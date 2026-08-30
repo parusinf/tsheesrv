@@ -1,9 +1,9 @@
 import io
 import json
 from urllib.parse import unquote_plus
-
 import aiohttp
 from aiohttp import web
+import logging
 
 from app.tsheesrv.models import (
     send_timesheet as db_send_timesheet,
@@ -46,6 +46,7 @@ async def send_timesheet(request: web.Request):
     data = await request.post()  # читает form-поля (не файлы)
     db_key = data.get('db_key')
     company_rn_str = data.get('company_rn')
+    logging.info('db_key: %s, company_rn: %s', db_key, company_rn_str, extra={'db_key': db_key, 'company_rn': company_rn_str})  # noqa: E501, E261')
 
     if not db_key or not company_rn_str:
         return web.Response(text='Missing db_key or company_rn', status=400)

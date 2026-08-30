@@ -1,12 +1,5 @@
 import oracledb
 import logging
-from typing import Optional, List, Tuple
-from requests import JSONDecodeError
-from tools.cp1251 import encode_cp1251
-import os
-import json
-from datetime import datetime
-from aiohttp import web
 
 class OracleAccessor:
     """
