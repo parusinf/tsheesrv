@@ -169,3 +169,4 @@ async def _extract_content2(request: web.Request):
         content = decode_cp1251(encoded)
         filename = unquote_plus(part.filename)
         return content, filename
+    return None
