@@ -16,7 +16,8 @@ async def get_orgs(db_key: str, org_inn: str) -> List[dict]:
     Для одного ИНН может быть одно или два учреждения: для основных групп и групп дополнительного образования.
     """
     try:
-        async with db.pool[db_key].acquire() as connection:
+        # ✅ ПРАВИЛЬНО: async with на самом пуле. Пул сам вызовет acquire() внутри.
+        async with db.pool[db_key] as connection:
             async with connection.cursor() as cursor:
                 orgs_json_var = await cursor.var(str)
                 await cursor.callproc('UDO_P_GET_PSORGS', [org_inn, orgs_json_var])
@@ -29,7 +30,6 @@ async def get_orgs(db_key: str, org_inn: str) -> List[dict]:
     except oracledb.Error as error:
         logging.error(error)
     except JSONDecodeError:
-        # orgs_json может быть не определён, если ошибка случилась раньше
         logging.error('Ошибка разбора JSON: значение не получено или некорректно')
     return []
 
@@ -39,7 +39,7 @@ async def get_org(db_key: str, org_inn: str, group: str) -> Optional[dict]:
     Поиск учреждения по ИНН и мнемокоду группы в заданной базе данных.
     """
     try:
-        async with db.pool[db_key].acquire() as connection:
+        async with db.pool[db_key] as connection:
             async with connection.cursor() as cursor:
                 org_json_var = await cursor.var(str)
                 await cursor.callproc('UDO_P_GET_PSORG', [org_inn, group, org_json_var])
@@ -75,7 +75,7 @@ async def find_org(org_inn: str, group: str) -> Optional[dict]:
 
 async def get_person(db_key: str, org_rn: int, family: str, firstname: str, lastname: str) -> Optional[int]:
     """Поиск сотрудника в учреждении."""
-    async with db.pool[db_key].acquire() as connection:
+    async with db.pool[db_key] as connection:
         async with connection.cursor() as cursor:
             person_rn_var = await cursor.var(int)
             await cursor.callproc('UDO_FIND_PERSON_BY_FIO', [org_rn, family, firstname, lastname, person_rn_var])
@@ -84,7 +84,7 @@ async def get_person(db_key: str, org_rn: int, family: str, firstname: str, last
 
 async def get_groups(db_key: str, org_rn: int) -> Optional[str]:
     """Получение списка групп учреждения."""
-    async with db.pool[db_key].acquire() as connection:
+    async with db.pool[db_key] as connection:
         async with connection.cursor() as cursor:
             groups_var = await cursor.var(str)
             await cursor.callproc('UDO_P_PSORG_GET_GROUPS', [org_rn, groups_var])
@@ -93,11 +93,12 @@ async def get_groups(db_key: str, org_rn: int) -> Optional[str]:
 
 async def receive_timesheet(db_key: str, org_rn: int, group: str, period=datetime.now()) -> Tuple[bytes, str]:
     """Получение табеля посещаемости по ключу базы данных, регистрационному номеру организации и мнемокоду группы."""
-    async with db.pool[db_key].acquire() as connection:
+    async with db.pool[db_key] as connection:
         async with connection.cursor() as cursor:
             filename_var = await cursor.var(str)
             content_var = await cursor.var(oracledb.DB_TYPE.CLOB)
             await cursor.callproc('UDO_P_TIMESHEET_SEND', [org_rn, group, period, filename_var, content_var])
+            # getvalue() для CLOB возвращает объект CLOB, у которого есть .read()
             content = content_var.getvalue().read()
             return encode_cp1251(content), filename_var.getvalue()
 
@@ -107,7 +108,9 @@ async def receive(org_inn: str, group: str, period=datetime.now()) -> Tuple[byte
     org = await find_org(org_inn, group)
     if org is None:
         raise LookupError(f'В учреждении с ИНН {org_inn} группа с мнемокодом "{group}" не найдена')
-    async with db.pool[org['db_key']].acquire() as connection:
+
+    # Используем db_key из найденного org
+    async with db.pool[org['db_key']] as connection:
         async with connection.cursor() as cursor:
             filename_var = await cursor.var(str)
             content_var = await cursor.var(oracledb.DB_TYPE.CLOB)
@@ -118,7 +121,7 @@ async def receive(org_inn: str, group: str, period=datetime.now()) -> Tuple[byte
 
 async def send_timesheet(db_key: str, company_rn: int, content: str) -> str:
     """Отправка табеля посещаемости группы в формате CSV в Парус."""
-    async with db.pool[db_key].acquire() as connection:
+    async with db.pool[db_key] as connection:
         async with connection.cursor() as cursor:
             result_var = await cursor.var(str)
             await cursor.callproc('UDO_P_TIMESHEET_RECEIVE', [company_rn, content, result_var])
