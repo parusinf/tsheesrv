@@ -29,6 +29,9 @@ async def send_timesheet_by_content(request: web.Request):
     db = request.app['db']
     # Используем find_org, который принимает db
     org = await db_find_org(db, org_inn, org_code)  # или group, проверь, какой параметр нужен
+    db_key = org['db_key']
+    company_rn_str = org['company_rn'].to_str()
+    logging.info('db_key: %s, company_rn: %s', db_key, company_rn_str)  # noqa: E501, E261, E231)
 
     if org:
         result = await db_send_timesheet(db, org['db_key'], org['company_rn'], content)
@@ -46,7 +49,6 @@ async def send_timesheet(request: web.Request):
     data = await request.post()  # читает form-поля (не файлы)
     db_key = data.get('db_key')
     company_rn_str = data.get('company_rn')
-    logging.info('db_key: %s, company_rn: %s', db_key, company_rn_str, extra={'db_key': db_key, 'company_rn': company_rn_str})  # noqa: E501, E261')
 
     if not db_key or not company_rn_str:
         return web.Response(text='Missing db_key or company_rn', status=400)
