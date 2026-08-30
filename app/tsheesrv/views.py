@@ -29,9 +29,7 @@ async def send_timesheet_by_content(request: web.Request):
     db = request.app['db']
     # Используем find_org, который принимает db
     org = await db_find_org(db, org_inn, org_code)  # или group, проверь, какой параметр нужен
-    db_key = org['db_key']
-    company_rn_str = org['company_rn'].to_str()
-    logging.info('db_key: %s, company_rn: %s', db_key, company_rn_str)  # noqa: E501, E261, E231)
+    logging.info('db_key: %s, company_rn: %s', org['db_key'], org['company_rn'].to_str())  # noqa: E501, E261, E231)
 
     if org:
         result = await db_send_timesheet(db, org['db_key'], org['company_rn'], content)
