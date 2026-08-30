@@ -57,11 +57,15 @@ async def send_timesheet_by_content(request: web.Request):
         logger.warning("Failed to parse org_code/org_inn from file: %s", e)
         return web.Response(text='Invalid file format: cannot parse org_code and org_inn', status=400)
 
-    logger.info("Parsed from file: org_code=%s, org_inn=%s", org_code, org_inn)
+    # Парсим код группы из третьей строки
+    parts = lines[2].split(';')
+    group_code = parts[0].strip()
+
+    logger.info("Parsed from file: org_code=%s, org_inn=%s, group_code=%s", org_code, org_inn, group_code)
 
     # 4. Ищем организацию
     db = request.app['db']
-    org = await db_find_org(db, org_inn, org_code)  # проверь порядок аргументов
+    org = await db_find_org(db, org_inn, group_code)  # проверь порядок аргументов
 
     if org is None:
         msg = f'Учреждение "{org_code}" с ИНН {org_inn} не найдено'
