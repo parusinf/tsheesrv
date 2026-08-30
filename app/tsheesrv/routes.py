@@ -1,6 +1,5 @@
 from app.tsheesrv import views
 
-
 def setup_routes(app):
     token = app['config']['web_token']
     app.router.add_post(f'/{token}', views.send_timesheet_by_content)

@@ -1,40 +1,198 @@
-from typing import Optional, List
-
-import app.store.database.models as database
-import app.store.cache.models as cache
-
-
-async def get_orgs(org_inn) -> List[dict]:
-    """Поиск учреждений по ИНН в кэше либо в базах данных с кэшированием"""
-    # Поиск учреждений по ИНН в кэше
-    orgs = await cache.get_orgs(org_inn)
-    # В кэше нет учреждений с таким ИНН
-    if len(orgs) == 0:
-        # Поиск базы данных и учреждений по ИНН
-        orgs = await database.find_orgs(org_inn)
-        # Кэширование учреждений
-        await cache.insert_orgs(orgs)
-    # В кеше одно учреждение с таким ИНН
-    elif len(orgs) == 1:
-        # Поиск учреждений по ключу базы данных из кеша и ИНН на случай добавления учреждения в базе данных
-        orgs = await database.get_orgs(orgs[0]['db_key'], org_inn)
-        # Кеширование нового учреждения (существующее учреждение добавлено не будет)
-        if len(orgs) == 2:
-            await cache.insert_orgs(orgs)
-    return orgs
+from datetime import datetime
+import oracledb
+import logging
+from typing import Optional, List, Tuple
+from requests import JSONDecodeError
+import json
+from tools.cp1251 import encode_cp1251
 
 
-async def get_org(org_code, org_inn) -> Optional[dict]:
-    """Поиск учреждения по мнемокоду и ИНН в кэше либо в базах данных по ИНН с кэшированием"""
-    # Поиск учреждения по мнемокоду и ИНН в кэше
-    org = await cache.get_org(org_code, org_inn)
-    # В кэше нет учреждения с таким мнемокодом и ИНН
-    if not org:
-        # Поиск учреждений по ИНН в кэше либо в базах данных с кэшированием
-        orgs = await get_orgs(org_inn)
-        # Поиск учреждения по мнемокоду и ИНН
-        for o in orgs:
-            if org_code == o['org_code'] and org_inn == o['org_inn']:
-                org = o
-                break
-    return org
+class OracleAccessor:
+    """
+    Только управляет пулами. Не выполняет запросы.
+    Экземпляр создаётся в main.py и кладётся в app['db'].
+    """
+    def __init__(self) -> None:
+        self.pool = {}
+
+    def setup(self, app) -> None:
+        app.on_startup.append(self.on_connect)
+        app.on_cleanup.append(self.on_disconnect)
+
+    async def on_connect(self, app) -> None:
+        logging.info('Подключение пулов баз данных (thin mode)')
+        config = app['config']
+        import os
+        os.environ['NLS_LANG'] = config['oracle']['nls_lang']
+
+        for db_key, db_param in config['database'].items():
+            try:
+                pool = oracledb.create_pool(
+                    host=db_param['host'],
+                    port=db_param['port'],
+                    service_name=db_param['service_name'],
+                    user=db_param['user'],
+                    password=db_param['password'],
+                    min=config['oracle']['min_pool'],
+                    max=config['oracle']['max_pool'],
+                    timeout=10,
+                )
+                self.pool[db_key] = pool
+                logging.info(f'Пул {db_key} успешно создан (thin mode)')
+            except Exception as e:
+                if db_key in self.pool:
+                    del self.pool[db_key]
+                logging.exception(f'Ошибка создания пула {db_key}: {e}')
+
+        logging.info(f'ИТОГО пулов в on_connect: {len(self.pool)}')
+
+    async def on_disconnect(self, _) -> None:
+        self.pool.clear()
+        logging.info('Пулы очищены')
+
+
+async def _with_conn(db, db_key: str, cb):
+    """
+    Гарантированный acquire/release.
+    cb — async callable, принимающий connection.
+    """
+    pool = db.pool.get(db_key)
+    if not pool:
+        raise ValueError(f"Пул с ключом {db_key} не найден. Доступные ключи: {list(db.pool.keys())}")
+
+    conn = None
+    try:
+        conn = await pool.acquire()
+        return await cb(conn)
+    except oracledb.Error as e:
+        logging.error("Oracle error (db_key=%s): %s", db_key, e)
+        raise
+    finally:
+        if conn is not None:
+            try:
+                await pool.release(conn)
+            except Exception:
+                pass
+
+
+# --- Функции работы с данными ---
+
+async def get_orgs(db, db_key: str, org_inn: str) -> List[dict]:
+    async def body(conn):
+        async with conn.cursor() as cursor:
+            orgs_json_var = await cursor.var(str)
+            await cursor.callproc('UDO_P_GET_PSORGS', [org_inn, orgs_json_var])
+            orgs_json = orgs_json_var.getvalue()
+            if orgs_json:
+                orgs = json.loads(orgs_json)
+                for org in orgs:
+                    org.update({'db_key': db_key})
+                return orgs
+            return []
+    return await _with_conn(db, db_key, body)
+
+
+async def get_org(db, db_key: str, org_inn: str, group: str) -> Optional[dict]:
+    async def body(conn):
+        async with conn.cursor() as cursor:
+            org_json_var = await cursor.var(str)
+            await cursor.callproc('UDO_P_GET_PSORG', [org_inn, group, org_json_var])
+            org_json = org_json_var.getvalue()
+            if org_json:
+                org = json.loads(org_json)
+                org.update({'db_key': db_key})
+                return org
+            return None
+
+    try:
+        return await _with_conn(db, db_key, body)
+    except oracledb.Error:
+        return None
+    except JSONDecodeError:
+        logging.error("JSON decode error in get_org")
+        return None
+
+
+async def find_orgs(db, org_inn: str) -> List[dict]:
+    for db_key in db.pool.keys():
+        orgs = await get_orgs(db, db_key, org_inn)
+        if orgs:
+            return orgs
+    return []
+
+
+async def find_org(db, org_inn: str, group: str) -> Optional[dict]:
+    for db_key in db.pool.keys():
+        org = await get_org(db, db_key, org_inn, group)
+        if org:
+            return org
+    return None
+
+
+async def get_person(db, db_key: str, org_rn: int, family: str, firstname: str, lastname: str) -> Optional[int]:
+    async def body(conn):
+        async with conn.cursor() as cursor:
+            person_rn_var = await cursor.var(int)
+            await cursor.callproc(
+                'UDO_FIND_PERSON_BY_FIO',
+                [org_rn, family, firstname, lastname, person_rn_var]
+            )
+            return person_rn_var.getvalue()
+    try:
+        return await _with_conn(db, db_key, body)
+    except oracledb.Error:
+        return None
+
+
+async def get_groups(db, db_key: str, org_rn: int) -> Optional[str]:
+    async def body(conn):
+        async with conn.cursor() as cursor:
+            groups_var = await cursor.var(str)
+            await cursor.callproc('UDO_P_PSORG_GET_GROUPS', [org_rn, groups_var])
+            return groups_var.getvalue()
+    try:
+        return await _with_conn(db, db_key, body)
+    except oracledb.Error:
+        return None
+
+
+async def receive_timesheet(db, db_key: str, org_rn: int, group: str, period=datetime.now()) -> Tuple[bytes, str]:
+    async def body(conn):
+        async with conn.cursor() as cursor:
+            filename_var = await cursor.var(str)
+            content_var = await cursor.var(oracledb.DB_TYPE.CLOB)
+            await cursor.callproc(
+                'UDO_P_TIMESHEET_SEND',
+                [org_rn, group, period, filename_var, content_var]
+            )
+            content = content_var.getvalue().read()
+            return encode_cp1251(content), filename_var.getvalue()
+    return await _with_conn(db, db_key, body)
+
+
+async def receive(db, org_inn: str, group: str, period=datetime.now()) -> Tuple[bytes, str]:
+    org = await find_org(db, org_inn, group)
+    if org is None:
+        raise LookupError(f'В учреждении с ИНН {org_inn} группа с мнемокодом "{group}" не найдена')
+
+    async def body(conn):
+        async with conn.cursor() as cursor:
+            filename_var = await cursor.var(str)
+            content_var = await cursor.var(oracledb.DB_TYPE.CLOB)
+            await cursor.callproc(
+                'UDO_P_TIMESHEET_SEND',
+                [org['org_rn'], group, period, filename_var, content_var]
+            )
+            content = content_var.getvalue().read()
+            return encode_cp1251(content), filename_var.getvalue()
+    return await _with_conn(db, org['db_key'], body)
+
+
+async def send_timesheet(db, db_key: str, company_rn: int, content: str) -> str:
+    async def body(conn):
+        async with conn.cursor() as cursor:
+            result_var = await cursor.var(str)
+            await cursor.callproc('UDO_P_TIMESHEET_RECEIVE', [company_rn, content, result_var])
+            await conn.commit()
+            return result_var.getvalue()
+    return await _with_conn(db, db_key, body)
